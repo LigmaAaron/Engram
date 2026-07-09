@@ -31,8 +31,15 @@ await writeFile(`${APP}/Contents/Info.plist`, `<?xml version="1.0" encoding="UTF
 await writeFile(`${APP}/Contents/MacOS/AaronOS`, `#!/bin/bash
 cd "${PROJECT_DIR}" || { osascript -e 'display alert "AaronOS" message "Project folder not found at ${PROJECT_DIR}"'; exit 1; }
 
+# Stay alive for as long as the server we started runs, so the app stays in
+# the Dock and quitting it (Cmd+Q / Dock > Quit) kills the server with it.
+# If a server is already up (e.g. a previous launch), just open the browser
+# and exit — nothing here to own or clean up.
+DEVPID=""
 if ! curl -s -o /dev/null "http://localhost:${PORT}"; then
-  nohup npm run dev >/tmp/aaronos.log 2>&1 &
+  npm run dev >/tmp/aaronos.log 2>&1 &
+  DEVPID=$!
+  trap 'kill $(pgrep -P $DEVPID) $DEVPID 2>/dev/null' EXIT INT TERM
 fi
 
 for i in $(seq 1 60); do
@@ -41,6 +48,8 @@ for i in $(seq 1 60); do
 done
 
 open "http://localhost:${PORT}"
+
+[ -n "$DEVPID" ] && wait "$DEVPID"
 `)
 await chmod(`${APP}/Contents/MacOS/AaronOS`, 0o755)
 
