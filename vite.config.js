@@ -86,6 +86,15 @@ function dataStore() {
         }
         res.writeHead(405).end()
       })
+
+      // Lets the UI stop the dev server itself — the standalone app's Dock
+      // icon doesn't reliably offer a quit (it's a plain script, not a real
+      // Cocoa app), so this is the actual "close" button.
+      server.middlewares.use('/__shutdown', (req, res) => {
+        if (req.method !== 'POST') { res.writeHead(405).end(); return }
+        res.writeHead(204).end()
+        setTimeout(() => process.exit(0), 50)
+      })
     },
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Grid3x3, Settings2, Bell, Search, Cpu } from 'pixelarticons/react'
+import { Grid3x3, Settings2, Bell, Search, Cpu, Power } from 'pixelarticons/react'
 import { useStore, useWidgets, actions, notify, on } from './core'
 import { CommandBar } from './widgets/Chat'
 
@@ -22,6 +22,12 @@ function Sidebar({ view, widgets }) {
       <div className="nav">
         <button className="nav-item" onClick={() => notify('Settings', 'Nothing to configure yet — wire it via window.AaronOS.')}>
           <Settings2 size={18} /><span className="nav-label-txt">Settings</span>
+        </button>
+        <button className="nav-item" onClick={() => {
+          if (!confirm('Shut down AaronOS?')) return
+          fetch('/__shutdown', { method: 'POST' }).finally(() => { document.body.innerHTML = '<p style="padding:2rem;font:14px monospace">AaronOS stopped. Close this tab.</p>' })
+        }}>
+          <Power size={18} /><span className="nav-label-txt">Shut Down</span>
         </button>
       </div>
     </nav>
