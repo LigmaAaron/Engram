@@ -42,16 +42,20 @@ await writeFile(`${APP}/Contents/MacOS/AaronOS`, `#!/bin/bash
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 cd "${PROJECT_DIR}" || { osascript -e 'display alert "AaronOS" message "Project folder not found at ${PROJECT_DIR}"'; exit 1; }
 
+# Kill any previous instance still holding the port (e.g. a launch that
+# didn't get a clean Cmd+Q) so we always start fresh instead of just
+# reattaching to whatever's running.
+lsof -ti tcp:${PORT} | xargs -r kill 2>/dev/null
+for i in $(seq 1 20); do
+  curl -s -o /dev/null "http://localhost:${PORT}" || break
+  sleep 0.25
+done
+
 # Stay alive for as long as the server we started runs, so the app stays in
 # the Dock and quitting it (Cmd+Q / Dock > Quit) kills the server with it.
-# If a server is already up (e.g. a previous launch), just open the browser
-# and exit — nothing here to own or clean up.
-DEVPID=""
-if ! curl -s -o /dev/null "http://localhost:${PORT}"; then
-  npm run dev >/tmp/aaronos.log 2>&1 &
-  DEVPID=$!
-  trap 'kill $(pgrep -P $DEVPID) $DEVPID 2>/dev/null' EXIT INT TERM
-fi
+npm run dev >/tmp/aaronos.log 2>&1 &
+DEVPID=$!
+trap 'kill $(pgrep -P $DEVPID) $DEVPID 2>/dev/null' EXIT INT TERM
 
 for i in $(seq 1 60); do
   curl -s -o /dev/null "http://localhost:${PORT}" && break
