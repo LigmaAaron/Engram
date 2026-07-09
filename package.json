@@ -1,0 +1,28 @@
+{
+  "name": "aaronos",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/ensure-ollama.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@internationalized/date": "^3.12.2",
+    "dompurify": "^3.4.11",
+    "marked": "^18.0.5",
+    "pixelarticons": "^2.2.0",
+    "react": "^18.3.1",
+    "react-aria-components": "^1.19.0",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.7"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}
