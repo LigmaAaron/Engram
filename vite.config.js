@@ -93,7 +93,7 @@ function dataStore() {
       server.middlewares.use('/__shutdown', (req, res) => {
         if (req.method !== 'POST') { res.writeHead(405).end(); return }
         res.writeHead(204).end()
-        setTimeout(() => process.exit(0), 50)
+        setTimeout(() => process.exit(0), 300)
       })
     },
   }

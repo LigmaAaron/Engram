@@ -6,7 +6,7 @@ import { CommandBar } from './widgets/Chat'
 const greetPart = () => { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening' }
 const todayStr = () => new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
-function Sidebar({ view, widgets }) {
+function Sidebar({ view, widgets, onShutdown }) {
   const nav = [{ id: 'overview', title: 'Overview', icon: Grid3x3 }, ...widgets]
   return (
     <nav id="sidebar">
@@ -23,14 +23,37 @@ function Sidebar({ view, widgets }) {
         <button className="nav-item" onClick={() => notify('Settings', 'Nothing to configure yet — wire it via window.AaronOS.')}>
           <Settings2 size={18} /><span className="nav-label-txt">Settings</span>
         </button>
-        <button className="nav-item" onClick={() => {
-          if (!confirm('Shut down AaronOS?')) return
-          fetch('/__shutdown', { method: 'POST' }).finally(() => { document.body.innerHTML = '<p style="padding:2rem;font:14px monospace">AaronOS stopped. Close this tab.</p>' })
-        }}>
+        <button className="nav-item" onClick={onShutdown}>
           <Power size={18} /><span className="nav-label-txt">Shut Down</span>
         </button>
       </div>
     </nav>
+  )
+}
+
+function ShutdownModal({ open, onCancel, onConfirm }) {
+  if (!open) return null
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <h3>Shut down AaronOS?</h3>
+        <p>This stops the local server. You'll need to reopen the app to use it again.</p>
+        <div className="modal-actions">
+          <button className="nav-item" onClick={onCancel}>Cancel</button>
+          <button className="modal-danger" onClick={onConfirm}>Shut Down</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ShutdownScreen() {
+  useEffect(() => { window.close() }, [])
+  return (
+    <div className="shutdown-screen">
+      <p>&gt; AaronOS stopped.</p>
+      <p className="dim">You can close this tab.</p>
+    </div>
   )
 }
 
@@ -71,14 +94,18 @@ export default function App() {
   const widgets = useWidgets()
   const [bellOpen, setBellOpen] = useState(false)
   const [seen, setSeen] = useState(0)
+  const [confirmShutdown, setConfirmShutdown] = useState(false)
+  const [shutDown, setShutDown] = useState(false)
   const unread = notifs.length - seen
 
   const solo = ui.view !== 'overview'
   const shown = solo ? widgets.filter((w) => w.id === ui.view) : widgets.filter((w) => w.grid !== false)
 
+  if (shutDown) return <ShutdownScreen />
+
   return (
     <>
-      <Sidebar view={ui.view} widgets={widgets} />
+      <Sidebar view={ui.view} widgets={widgets} onShutdown={() => setConfirmShutdown(true)} />
       <main id="main">
         <div className="topbar">
           <div className="greeting">
@@ -108,6 +135,11 @@ export default function App() {
       </main>
       <Toaster />
       <NotifPanel open={bellOpen} notifs={notifs} onClose={() => setBellOpen(false)} />
+      <ShutdownModal
+        open={confirmShutdown}
+        onCancel={() => setConfirmShutdown(false)}
+        onConfirm={() => { setConfirmShutdown(false); fetch('/__shutdown', { method: 'POST' }).finally(() => setShutDown(true)) }}
+      />
     </>
   )
 }
