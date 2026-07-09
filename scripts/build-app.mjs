@@ -29,6 +29,9 @@ await writeFile(`${APP}/Contents/Info.plist`, `<?xml version="1.0" encoding="UTF
 `)
 
 await writeFile(`${APP}/Contents/MacOS/AaronOS`, `#!/bin/bash
+# Finder launches apps with a minimal PATH (no ~/.local/bin, no Homebrew) —
+# add the usual node/npm install locations so this doesn't silently fail.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 cd "${PROJECT_DIR}" || { osascript -e 'display alert "AaronOS" message "Project folder not found at ${PROJECT_DIR}"'; exit 1; }
 
 # Stay alive for as long as the server we started runs, so the app stays in
