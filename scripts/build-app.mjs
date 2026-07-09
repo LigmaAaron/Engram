@@ -4,7 +4,8 @@
 // ponytail: hardcodes this machine's project path. Personal single-Mac tool,
 // not meant to run standalone on another machine — add relocatable pathing
 // (Contents/Resources copy of the repo) if that ever changes.
-import { mkdir, writeFile, chmod, rm } from 'node:fs/promises'
+import { mkdir, writeFile, chmod, rm, copyFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 
 const PROJECT_DIR = process.cwd()
@@ -13,6 +14,12 @@ const PORT = 5173
 
 await rm(APP, { recursive: true, force: true })
 await mkdir(`${APP}/Contents/MacOS`, { recursive: true })
+await mkdir(`${APP}/Contents/Resources`, { recursive: true })
+
+// Copy app icon if it exists
+if (existsSync('public/AppIcon.icns')) {
+  await copyFile('public/AppIcon.icns', `${APP}/Contents/Resources/AppIcon.icns`)
+}
 
 await writeFile(`${APP}/Contents/Info.plist`, `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -21,6 +28,7 @@ await writeFile(`${APP}/Contents/Info.plist`, `<?xml version="1.0" encoding="UTF
   <key>CFBundleName</key><string>AaronOS</string>
   <key>CFBundleIdentifier</key><string>com.aaronchen.aaronos</string>
   <key>CFBundleExecutable</key><string>AaronOS</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>LSUIElement</key><false/>
