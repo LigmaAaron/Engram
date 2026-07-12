@@ -7,7 +7,7 @@ const greetPart = () => { const h = new Date().getHours(); return h < 12 ? 'morn
 const todayStr = () => new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
 function Sidebar({ view, widgets, onShutdown }) {
-  const nav = [{ id: 'overview', title: 'Overview', icon: Grid3x3 }, ...widgets]
+  const nav = [{ id: 'overview', title: 'Overview', icon: Grid3x3 }, ...widgets.filter((w) => w.page !== false)]
   return (
     <nav id="sidebar">
       <div className="brand"><div className="logo"><Cpu size={16} /></div><div className="name">AaronOS</div></div>
@@ -75,15 +75,20 @@ function NotifPanel({ open, notifs, onClose }) {
 
 function Toaster() {
   const [toasts, setToasts] = useState([])
+  const dismiss = (id) => setToasts((x) => x.filter((y) => y.id !== id))
   useEffect(() => on('toast', (t) => {
     const id = Math.random()
     setToasts((x) => [...x, { ...t, id }])
-    setTimeout(() => setToasts((x) => x.filter((y) => y.id !== id)), 4000)
+    setTimeout(() => dismiss(id), 4000)
   }), [])
   return (
     <div id="toasts">
       {toasts.map((t) => (
-        <div className="toast" key={t.id}><div className="t">{t.title}</div>{t.body && <div className="b">{t.body}</div>}</div>
+        <div className="toast" key={t.id}>
+          <div className="t">{t.title}</div>
+          {t.body && <div className="b">{t.body}</div>}
+          {t.undo && <button className="toast-undo" onClick={() => { t.undo(); dismiss(t.id) }}>Undo</button>}
+        </div>
       ))}
     </div>
   )
@@ -124,7 +129,7 @@ export default function App() {
           </div>
         </div>
         {ui.view === 'overview' && <CommandBar />}
-        <div className="grid">
+        <div className={'grid' + (solo ? ' solo' : '')}>
           {shown.map((w) => (
             <section className="card" key={w.id} style={{ gridColumn: `span ${solo ? 12 : w.span}` }}>
               <div className="card-h"><w.icon size={16} /><h2>{w.title}</h2></div>

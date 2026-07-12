@@ -7,7 +7,6 @@ import './styles.css'
 // Import widgets for their registration side-effects. Add a file here to add a widget.
 import './widgets/Tasks'
 import './widgets/Metrics'
-import './widgets/Schedule'
 import './widgets/Calendar'
 import './widgets/Notes'
 import './widgets/Launcher'

@@ -20,7 +20,7 @@ export const occursOn = (ev, ds) => {
 
 const defaults = {
   tasks: [],   // { id, text, done, due?: 'YYYY-MM-DD', tags?: ['class'] }
-  events: [],  // { id, time: 'HH:MM', title, date?, repeat? } — see occursOn
+  events: [],  // { id, time: 'HH:MM', end?: 'HH:MM', title, date?, repeat? } — see occursOn
   links: [
     { label: 'Gmail',    url: 'https://mail.google.com',     icon: 'Mail' },
     { label: 'GitHub',   url: 'https://github.com',          icon: 'Terminal' },
@@ -31,7 +31,7 @@ const defaults = {
   chats: [],       // { id, title, messages: [{role, content, thinking?}], artifacts: [{title, content, ts}] }
   activeChat: null,
   notes: '',
-  schedule: [],    // { id, name, start: 'HH:MM', end: 'HH:MM', days: [0-6] }
+  schedule: [],    // { id, name, start: 'HH:MM', end: 'HH:MM', days: [0-6], except?: ['YYYY-MM-DD'] }
   reminders: [],   // { id, at: epoch ms, title, body }
   settings: { model: 'qwen3.5:latest', think: true, effort: 'medium' },
   notifs: [],
@@ -65,6 +65,8 @@ export async function hydrate() {
   state.events = state.events.map((e, i) => (e.id ? e : { ...e, id: Date.now() + i, date: isoDay() }))
   // single `tag` string -> `tags` array
   state.tasks = state.tasks.map((t) => { if (t.tags || !('tag' in t)) return t; const { tag, ...rest } = t; return tag ? { ...rest, tags: [tag] } : rest })
+  // the schedule widget merged into 'calendar' (Today) — unstick a saved view
+  if (state.ui.view === 'schedule') state.ui = { ...state.ui, view: 'overview' }
   hydrated = true
   subs.forEach((f) => f())
 }
@@ -98,30 +100,47 @@ export const notify = (title, body = '') => {
   emit('toast', { title, body })
 }
 
+// Ephemeral feedback only (unlike notify, not saved to the notification panel's
+// history) — used for undo affordances on destructive actions.
+export const toast = (title, body, undo) => emit('toast', { title, body, undo })
+
 const updateChat = (fn) =>
   store.set((s) => ({ chats: s.chats.map((c) => (c.id === s.activeChat ? fn(c) : c)) }))
 
+// Date.now() alone collides when two items are created in the same millisecond
+// (e.g. the chat agent chaining add calls) — duplicate ids break React keys
+// and make remove-by-id delete both. Monotonic: never returns the same value twice.
+let lastId = 0
+const uid = () => { const t = Date.now(); lastId = t > lastId ? t : lastId + 1; return lastId }
+
 /* ---- Actions (also the window.AaronOS scripting API) ---- */
 export const actions = {
-  addTask: (text, due, tags) => store.set((s) => ({ tasks: [{ id: Date.now(), text, done: false, ...(due ? { due } : {}), ...(tags?.length ? { tags } : {}) }, ...s.tasks] })),
+  addTask: (text, due, tags) => store.set((s) => ({ tasks: [{ id: uid(), text, done: false, ...(due ? { due } : {}), ...(tags?.length ? { tags } : {}) }, ...s.tasks] })),
   toggleTask: (id) => store.set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) })),
   updateTask: (id, patch) => store.set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
   removeTask: (id) => store.set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
-  addEvent: (time, title, date, repeat) => store.set((s) => ({ events: [...s.events, { id: Date.now(), time, title, date: date || isoDay(), ...(repeat ? { repeat } : {}) }] })),
+  restoreTask: (t) => store.set((s) => ({ tasks: [t, ...s.tasks] })),
+  addEvent: (time, title, date, repeat, end) => store.set((s) => ({ events: [...s.events, { id: uid(), time, title, date: date || isoDay(), ...(end ? { end } : {}), ...(repeat ? { repeat } : {}) }] })),
   removeEvent: (id) => store.set((s) => ({ events: s.events.filter((e) => e.id !== id) })),
+  restoreEvent: (e) => store.set((s) => ({ events: [...s.events, e] })),
   skipEvent: (id, date) => store.set((s) => ({ events: s.events.map((e) => (e.id === id && e.repeat ? { ...e, repeat: { ...e.repeat, except: [...(e.repeat.except || []), date] } } : e)) })),
+  unskipEvent: (id, date) => store.set((s) => ({ events: s.events.map((e) => (e.id === id && e.repeat ? { ...e, repeat: { ...e.repeat, except: (e.repeat.except || []).filter((d) => d !== date) } } : e)) })),
   endEvent: (id, until) => store.set((s) => ({ events: s.events.map((e) => (e.id === id && e.repeat ? { ...e, repeat: { ...e.repeat, until } } : e)) })),
-  addClass: (name, start, end, days = [1, 2, 3, 4, 5]) => store.set((s) => ({ schedule: [...s.schedule, { id: Date.now(), name, start, end, days }] })),
+  addClass: (name, start, end, days = [1, 2, 3, 4, 5]) => store.set((s) => ({ schedule: [...s.schedule, { id: uid(), name, start, end, days }] })),
   removeClass: (id) => store.set((s) => ({ schedule: s.schedule.filter((c) => c.id !== id) })),
+  restoreClass: (c) => store.set((s) => ({ schedule: [...s.schedule, c] })),
+  skipClass: (id, date) => store.set((s) => ({ schedule: s.schedule.map((c) => (c.id === id ? { ...c, except: [...(c.except || []), date] } : c)) })),
+  unskipClass: (id, date) => store.set((s) => ({ schedule: s.schedule.map((c) => (c.id === id ? { ...c, except: (c.except || []).filter((d) => d !== date) } : c)) })),
   setNotes: (notes) => store.set({ notes }),
   allTags: () => [...new Set(store.get().tasks.flatMap((t) => t.tags || []))],
   remind: (at, title, body = '') => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission()
-    store.set((s) => ({ reminders: [...s.reminders, { id: Date.now(), at, title, body }] }))
+    store.set((s) => ({ reminders: [...s.reminders, { id: uid(), at, title, body }] }))
   },
   removeReminder: (id) => store.set((s) => ({ reminders: s.reminders.filter((r) => r.id !== id) })),
   addLink: (label, url, icon) => store.set((s) => ({ links: [...s.links, { label, url, icon }] })),
   removeLink: (i) => store.set((s) => ({ links: s.links.filter((_, x) => x !== i) })),
+  restoreLink: (l) => store.set((s) => ({ links: [...s.links, l] })),
   setView: (view) => store.set((s) => ({ ui: { ...s.ui, view } })),
   setSearch: (search) => store.set((s) => ({ ui: { ...s.ui, search } })),
   setSettings: (patch) => store.set((s) => ({ settings: { ...s.settings, ...patch } })),
@@ -129,7 +148,7 @@ export const actions = {
   newChat: () => { const id = Date.now(); store.set((s) => ({ chats: [...s.chats, { id, title: 'new chat', messages: [], artifacts: [] }], activeChat: id })) },
   deleteChat: (id) => store.set((s) => {
     const chats = s.chats.filter((c) => c.id !== id)
-    if (!chats.length) chats.push({ id: Date.now(), title: 'new chat', messages: [], artifacts: [] })
+    if (!chats.length) chats.push({ id: uid(), title: 'new chat', messages: [], artifacts: [] })
     return { chats, activeChat: chats[chats.length - 1].id }
   }),
   setActiveChat: (id) => store.set({ activeChat: id }),

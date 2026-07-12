@@ -1,14 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { readFile, writeFile, appendFile, mkdir } from 'node:fs/promises'
+import { readFile, appendFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { makeStore } from './scripts/state-store.mjs'
 
 // File-backed persistence for the dashboard. Browsers can't write to disk, so
 // the app GETs/POSTs its whole state here and the dev server keeps it in
 // data/state.json — survives clearing the browser, syncs across tabs on reload.
+// Writes go through makeStore: atomic (temp + rename) with a rolling .bak, so a
+// crash or a second writer can't corrupt or erase the file.
 // ponytail: single JSON blob, last-write-wins. Split per-collection only if the
 // file grows big enough that rewriting all of it on every change actually hurts.
-const DATA_FILE = 'data/state.json'
+const store = makeStore('data')
 // The chat agent's long-term memory: a plain markdown file it reads into every
 // system prompt and appends to via its `remember` tool. Self-improvement in the
 // laziest form that works — no DB, just a file you can also open and edit yourself.
@@ -18,9 +21,10 @@ function dataStore() {
   return {
     name: 'aaronos-data-store',
     configureServer(server) {
+      store.claimLock() // warn if another dev server already owns data/state.json
       server.middlewares.use('/__data', (req, res) => {
         if (req.method === 'GET') {
-          readFile(DATA_FILE, 'utf8')
+          store.load()
             .then((txt) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(txt) })
             .catch(() => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{}') })
           return
@@ -30,8 +34,7 @@ function dataStore() {
           req.on('data', (c) => { body += c })
           req.on('end', async () => {
             try { JSON.parse(body) } catch { res.writeHead(400).end('invalid JSON'); return }
-            await mkdir(dirname(DATA_FILE), { recursive: true })
-            await writeFile(DATA_FILE, body)
+            await store.save(body)
             res.writeHead(204).end()
           })
           return

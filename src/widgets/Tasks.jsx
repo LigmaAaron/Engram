@@ -14,7 +14,7 @@ import {
   Popover
 } from 'react-aria-components'
 import { parseDate } from '@internationalized/date'
-import { useStore, actions, registerWidget, isoDay } from '../core'
+import { useStore, actions, registerWidget, isoDay, toast } from '../core'
 import { extractTags } from '../parse'
 
 // Homework-aware tasks: optional due date and a class tag
@@ -82,7 +82,8 @@ function Tasks() {
                 <span className="txt">{t.text}</span>
                 {(t.tags || []).map((tag) => <span key={tag} className="chip">{tag}</span>)}
                 {t.due && <span className={'chip due' + (!t.done && t.due < today ? ' late' : '')}>{t.due === today ? 'today' : t.due.slice(5)}</span>}
-                <button className="del" onClick={() => actions.removeTask(t.id)}><Close size={14} /></button>
+                <button className="del" aria-label={`Remove task ${t.text}`}
+                  onClick={() => { actions.removeTask(t.id); toast('Task removed', t.text, () => actions.restoreTask(t)) }}><Close size={14} /></button>
               </li>
             ))}
           </ul>}

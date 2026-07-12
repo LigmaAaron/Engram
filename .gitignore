@@ -1,6 +1,9 @@
 node_modules/
 dist/
 data/state.json
+data/state.json.bak
+data/state.json.*.tmp
+data/.server.lock
 data/memory.md
 *.log
 .DS_Store
