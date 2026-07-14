@@ -142,12 +142,28 @@ const toolSpec = Object.entries(TOOLS).map(([name, { desc, params }]) => ({
   },
 }))
 
+// Framing per install-time use-case answer — keeps the assistant's sense of
+// what it's helping with specific instead of falling back to generic advice.
+const USE_CASE_FRAMING = {
+  student: 'is a student — help with schoolwork, assignments, and staying on top of classes.',
+  developer: 'is a developer — help with code, technical tasks, and project tracking.',
+  writer: 'is a writer — help with drafts, editing, and research.',
+  general: 'uses this for daily life — help with whatever comes up.',
+}
+const STYLE_FRAMING = {
+  detailed: 'Explain your reasoning, not just the answer.',
+  direct: 'Answer directly; skip unnecessary preamble.',
+  concise: 'Be terse — the shortest correct answer, no elaboration unless asked.',
+}
+
 const systemPrompt = (s, memory, extra) => {
   const now = new Date()
   const today = isoDay(now)
   const name = s.settings?.userName || 'there'
+  const framing = USE_CASE_FRAMING[s.settings?.useCase] || USE_CASE_FRAMING.general
+  const style = STYLE_FRAMING[s.settings?.style] || STYLE_FRAMING.direct
   return [
-    `You are Engram, the assistant built into ${name}'s personal dashboard. Help with anything ${name} needs. Change the dashboard directly by calling tools; don't just describe what to do.`,
+    `You are Engram, the assistant built into ${name}'s personal dashboard. ${name} ${framing} Change the dashboard directly by calling tools; don't just describe what to do. ${style}`,
     `Use ids from the state below for toggle/remove/skip/end; never invent them. Recurring events: days+until on add_event; skip_event for one-day exceptions; end_event to stop one. When ${name} tells you a lasting preference or fact, call remember. Use web_search when you need current or factual info you are unsure about, and cite result URLs. Use write_document for anything long instead of dumping it in chat. After acting, reply briefly in markdown confirming what you did.`,
     '',
     'Where things live: tasks = untimed to-dos; events = anything with a time on the calendar; notes = freeform text; long-term memory = durable preferences/facts only, never calendar or task data. Never claim you added, saved, changed, or deleted something unless a tool call this turn returned a result confirming it — if you have not called the tool, call it; do not just assert the outcome.',

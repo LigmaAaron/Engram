@@ -35,7 +35,7 @@ const defaults = {
   noteDraft: '',   // the overview quick-capture buffer; sealed into a dated note on next load
   schedule: [],    // { id, name, start: 'HH:MM', end: 'HH:MM', days: [0-6], except?: ['YYYY-MM-DD'] }
   reminders: [],   // { id, at: epoch ms, title, body }
-  settings: { userName: '', model: 'qwen3.5:latest', think: true, effort: 'medium' },
+  settings: { userName: '', useCase: 'general', style: 'direct', model: 'qwen3.5:latest', think: true, effort: 'medium' },
   generating: null, // chatId currently being generated (persisted so a reload can resume it)
   notifs: [],
   streak: { count: 0, last: null },
