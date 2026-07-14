@@ -159,6 +159,8 @@ function dataStore() {
 
 export default defineConfig({
   plugins: [react(), dataStore()],
+  build: { target: 'esnext' }, // main.jsx uses top-level await
+
   server: {
     // The chat widget calls Ollama through this proxy so the browser hits a
     // same-origin path — no OLLAMA_ORIGINS / CORS setup needed on Ollama's side.
