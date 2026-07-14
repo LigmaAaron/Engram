@@ -104,7 +104,8 @@ if [ "$i" -lt 0 ]; then
   echo "Sorry, your device isn't capable of AI-powered features on Engram (needs 8GB+ RAM and a few GB of free disk space). Installing without AI."
   npm install
   node scripts/build-app.mjs
-  echo "Done. Engram is in the menu bar — AI chat is unavailable on this device."
+  open "$HOME/Applications/Engram.app"
+  echo "Done. Engram is running — look for its icon in the menu bar (installed to ~/Applications, not /Applications). AI chat is unavailable on this device."
   exit 0
 fi
 
@@ -121,5 +122,6 @@ ollama pull "$MODEL"
 
 npm install
 node scripts/build-app.mjs
+open "$HOME/Applications/Engram.app"
 
-echo "Done. Engram is in the menu bar. If $MODEL isn't the default model, pick it from the Settings dropdown in the app."
+echo "Done. Engram is running — look for its icon in the menu bar (installed to ~/Applications, not /Applications). If $MODEL isn't the default model, pick it from the Settings dropdown in the app."
