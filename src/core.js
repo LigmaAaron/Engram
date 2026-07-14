@@ -1,6 +1,7 @@
 /* Engram core — store, event bus, widget registry, notifications.
    window.Engram is the scripting surface for later integration. */
 import { useSyncExternalStore } from 'react'
+import { registerWidget, getWidgets, onWidgets } from './registry'
 
 // local date as YYYY-MM-DD (not toISOString — that's UTC and shifts overnight)
 export const isoDay = (d = new Date()) =>
@@ -111,13 +112,9 @@ const bus = {}
 export const on = (e, f) => { (bus[e] ??= new Set()).add(f); return () => bus[e].delete(f) }
 export const emit = (e, p) => { (bus[e] || []).forEach((f) => f(p)) }
 
-/* ---- Widget registry: register() to add a widget to grid + sidebar ---- */
-const widgets = []
-export const registerWidget = (w) => {
-  if (!widgets.find((x) => x.id === w.id)) { widgets.push(w); emit('widgets') }
-}
-export const useWidgets = () =>
-  useSyncExternalStore((cb) => on('widgets', cb), () => widgets)
+/* ---- Widget registry (see src/registry.js) ---- */
+export { registerWidget }
+export const useWidgets = () => useSyncExternalStore(onWidgets, getWidgets)
 
 /* ---- Notifications ---- */
 export const notify = (title, body = '') => {
