@@ -5,5 +5,7 @@ data/state.json.bak
 data/state.json.*.tmp
 data/.server.lock
 data/memory.md
+data/extensions.json
+data/extensions-cache/
 *.log
 .DS_Store

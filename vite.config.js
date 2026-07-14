@@ -4,6 +4,7 @@ import { readFile, appendFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { makeStore } from './scripts/state-store.mjs'
 import { runAgent, searchWeb } from './scripts/agent.mjs'
+import { loadExtensions, addLibrary, removeLibrary, installExtension, uninstallExtension } from './scripts/extensions-store.mjs'
 
 // File-backed persistence for the dashboard. Browsers can't write to disk, so
 // the app GETs/POSTs its whole state here and the dev server keeps it in
@@ -157,8 +158,46 @@ function dataStore() {
   }
 }
 
+// Extensions: add a git repo, browse the module-shaped folders it contains,
+// install/uninstall them individually into src/modules. See
+// scripts/extensions-store.mjs for the git/fs logic — this is just routing.
+function extensionsPlugin() {
+  return {
+    name: 'aaronos-extensions',
+    configureServer(server) {
+      server.middlewares.use('/__extensions', async (req, res) => {
+        const url = new URL(req.url, 'http://localhost')
+        const segs = url.pathname.split('/').filter(Boolean)
+        const send = (code, body) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)) }
+        const readBody = (req) => new Promise((resolve) => {
+          let b = ''
+          req.on('data', (c) => { b += c })
+          req.on('end', () => { try { resolve(JSON.parse(b || '{}')) } catch { resolve({}) } })
+        })
+
+        try {
+          if (req.method === 'GET' && segs.length === 0) return send(200, await loadExtensions())
+          if (req.method === 'POST' && segs[0] === 'library' && segs.length === 1) {
+            const { url: repoUrl } = await readBody(req)
+            return send(200, await addLibrary(repoUrl))
+          }
+          if (req.method === 'DELETE' && segs[0] === 'library' && segs[1]) return send(200, await removeLibrary(segs[1]))
+          if (req.method === 'POST' && segs[0] === 'install' && segs.length === 1) {
+            const { libraryId, path, id } = await readBody(req)
+            return send(200, await installExtension(libraryId, path, id))
+          }
+          if (req.method === 'DELETE' && segs[0] === 'install' && segs[1]) return send(200, await uninstallExtension(segs[1]))
+          send(404, { error: 'not found' })
+        } catch (e) {
+          send(400, { error: e.message })
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), dataStore()],
+  plugins: [react(), dataStore(), extensionsPlugin()],
   build: { target: 'esnext' }, // main.jsx uses top-level await
 
   server: {
