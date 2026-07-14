@@ -55,5 +55,5 @@ function Launcher() {
   )
 }
 
-registerWidget({ id: 'launcher', title: 'Quick launch', icon: Terminal, span: 12, Component: Launcher })
+registerWidget({ id: 'launcher', title: 'Quick launch', icon: Terminal, order: 50, span: 12, Widget: Launcher, Page: Launcher })
 export default Launcher

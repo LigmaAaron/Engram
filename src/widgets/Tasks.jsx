@@ -91,5 +91,5 @@ function Tasks() {
   )
 }
 
-registerWidget({ id: 'tasks', title: 'Tasks', icon: ListBox, span: 6, Component: Tasks })
+registerWidget({ id: 'tasks', title: 'Tasks', icon: ListBox, order: 10, span: 6, Widget: Tasks, Page: Tasks })
 export default Tasks

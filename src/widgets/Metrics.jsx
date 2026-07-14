@@ -32,5 +32,5 @@ function Metrics() {
   )
 }
 
-registerWidget({ id: 'metrics', title: 'Metrics', icon: Chart, span: 6, page: false, Component: Metrics })
+registerWidget({ id: 'metrics', title: 'Metrics', icon: Chart, order: 20, span: 6, Widget: Metrics })
 export default Metrics

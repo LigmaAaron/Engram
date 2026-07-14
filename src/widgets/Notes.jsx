@@ -138,10 +138,5 @@ function NotesPage() {
   )
 }
 
-// One registered widget, two faces: compact capture in the grid, full page solo.
-function Notes() {
-  return useStore().ui.view === 'notes' ? <NotesPage /> : <QuickNote />
-}
-
-registerWidget({ id: 'notes', title: 'Notes', icon: NotesIcon, span: 12, Component: Notes })
-export default Notes
+registerWidget({ id: 'notes', title: 'Notes', icon: NotesIcon, order: 40, span: 12, Widget: QuickNote, Page: NotesPage })
+export default NotesPage

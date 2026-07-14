@@ -308,12 +308,5 @@ function TodayPage() {
   )
 }
 
-// Overview shows the compact widget; the dedicated page gets the full-screen
-// layout. Completely separate markup so one can change without breaking the other.
-function Today() {
-  const { ui } = useStore()
-  return ui.view === 'calendar' ? <TodayPage /> : <TodayCompact />
-}
-
-registerWidget({ id: 'calendar', title: 'Calendar', icon: CalIcon, span: 12, Component: Today })
-export default Today
+registerWidget({ id: 'calendar', title: 'Calendar', icon: CalIcon, order: 30, span: 12, Widget: TodayCompact, Page: TodayPage })
+export default TodayPage

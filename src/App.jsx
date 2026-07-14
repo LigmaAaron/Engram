@@ -12,7 +12,7 @@ function Sidebar({ view, widgets, onShutdown }) {
   const [renameText, setRenameText] = useState('')
   const [renamingNoteId, setRenamingNoteId] = useState(null)
   const [renameNoteText, setRenameNoteText] = useState('')
-  const nav = [{ id: 'overview', title: 'Overview', icon: Grid3x3 }, ...widgets.filter((w) => w.page !== false)]
+  const nav = [{ id: 'overview', title: 'Overview', icon: Grid3x3 }, ...widgets.filter((w) => w.Page)]
   const recentChats = chats.slice(-3).reverse()
   const recentNotes = [...notes].sort((a, b) => b.modified - a.modified).slice(0, 3)
   const openChat = (id) => { actions.setActiveChat(id); actions.setView('chat') }
@@ -247,7 +247,7 @@ export default function App() {
   }, [])
 
   const solo = ui.view !== 'overview'
-  const shown = solo ? widgets.filter((w) => w.id === ui.view) : widgets.filter((w) => w.grid !== false)
+  const shown = solo ? widgets.filter((w) => w.id === ui.view && w.Page) : widgets.filter((w) => w.Widget)
 
   if (shutDown) return <ShutdownScreen />
 
@@ -273,12 +273,15 @@ export default function App() {
         </div>
         {ui.view === 'overview' && <CommandBar />}
         <div className={'grid' + (solo ? ' solo' : '')}>
-          {shown.map((w) => (
-            <section className="card" key={w.id} style={{ gridColumn: `span ${solo ? 12 : w.span}` }}>
-              <div className="card-h"><w.icon size={16} /><h2>{w.title}</h2></div>
-              <div className="card-b"><w.Component /></div>
-            </section>
-          ))}
+          {shown.map((w) => {
+            const Body = solo ? w.Page : w.Widget
+            return (
+              <section className="card" key={w.id} style={{ gridColumn: `span ${solo ? 12 : w.span}` }}>
+                <div className="card-h"><w.icon size={16} /><h2>{w.title}</h2></div>
+                <div className="card-b"><Body /></div>
+              </section>
+            )
+          })}
         </div>
       </main>
       <Toaster />

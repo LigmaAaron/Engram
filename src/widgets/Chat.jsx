@@ -373,6 +373,5 @@ export function CommandBar() {
   )
 }
 
-// grid:false — lives only as a sidebar tab; the overview shows CommandBar instead.
-registerWidget({ id: 'chat', title: 'AI Chat', icon: Message, span: 12, grid: false, Component: Chat })
+registerWidget({ id: 'chat', title: 'AI Chat', icon: Message, order: 60, Page: Chat })
 export default Chat
