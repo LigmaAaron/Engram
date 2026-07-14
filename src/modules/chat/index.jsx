@@ -400,5 +400,5 @@ export function ChatNavPanel() {
   ))
 }
 
-registerWidget({ id: 'chat', title: 'AI Chat', icon: Message, order: 60, Page: Chat, nav: { Panel: ChatNavPanel } })
+registerWidget({ id: 'chat', title: 'AI Chat', icon: Message, order: 45, Page: Chat, nav: { Panel: ChatNavPanel } })
 export default Chat
