@@ -308,5 +308,8 @@ function TodayPage() {
   )
 }
 
-registerWidget({ id: 'calendar', title: 'Calendar', icon: CalIcon, order: 30, span: 12, Widget: TodayCompact, Page: TodayPage })
+registerWidget({
+  id: 'calendar', title: 'Calendar', icon: CalIcon, order: 30, span: 12, Widget: TodayCompact, Page: TodayPage,
+  nav: { badge: (s) => s.events.filter((e) => occursOn(e, isoDay())).length },
+})
 export default TodayPage

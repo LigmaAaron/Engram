@@ -373,5 +373,32 @@ export function CommandBar() {
   )
 }
 
-registerWidget({ id: 'chat', title: 'AI Chat', icon: Message, order: 60, Page: Chat })
+// Sidebar sub-panel: last three chats, click to open, pencil to rename.
+export function ChatNavPanel() {
+  const { chats } = useStore()
+  const [renamingId, setRenamingId] = useState(null)
+  const [text, setText] = useState('')
+  const recent = chats.slice(-3).reverse()
+  const open = (id) => { actions.setActiveChat(id); actions.setView('chat') }
+  const commit = () => { const t = text.trim(); if (t) actions.renameChat(renamingId, t); setRenamingId(null) }
+  if (!recent.length) return <div className="nav-sub-empty">No chats yet</div>
+  return recent.map((c) => (
+    <div className="nav-sub-row" key={c.id}>
+      {renamingId === c.id ? (
+        <input className="nav-sub-rename-input" autoFocus value={text}
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') commit(); else if (e.key === 'Escape') setRenamingId(null) }} />
+      ) : (
+        <>
+          <button className="nav-sub-item" onClick={() => open(c.id)}>{c.title}</button>
+          <button className="nav-sub-rename" onClick={() => { setRenamingId(c.id); setText(c.title) }} title="Rename chat"><Pencil size={12} /></button>
+        </>
+      )}
+    </div>
+  ))
+}
+
+registerWidget({ id: 'chat', title: 'AI Chat', icon: Message, order: 60, Page: Chat, nav: { Panel: ChatNavPanel } })
 export default Chat

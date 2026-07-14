@@ -41,7 +41,7 @@ const defaults = {
   notifs: [],
   streak: { count: 0, last: null },
   lastBrief: null,
-  ui: { view: 'overview', search: '', overviewOpen: false, chatOpen: false, notesOpen: false },
+  ui: { view: 'overview', search: '', navOpen: {} },
 }
 
 /* ---- Store: single source of truth, persisted to data/state.json via the
@@ -85,6 +85,11 @@ export async function hydrate() {
   }
   // the schedule widget merged into 'calendar' (Today) — unstick a saved view
   if (state.ui.view === 'schedule') state.ui = { ...state.ui, view: 'overview' }
+  // per-widget sidebar booleans -> one navOpen map keyed by module id
+  if (!state.ui.navOpen) {
+    const { overviewOpen, chatOpen, notesOpen, ...ui } = state.ui
+    state.ui = { ...ui, navOpen: { overview: !!overviewOpen, chat: !!chatOpen, notes: !!notesOpen } }
+  }
   hydrated = true
   if (sealed) persist() // write the cleared draft back so it isn't re-sealed next load
   subs.forEach((f) => f())
@@ -189,9 +194,7 @@ export const actions = {
   restoreLink: (l) => store.set((s) => ({ links: [...s.links, l] })),
   setView: (view) => store.set((s) => ({ ui: { ...s.ui, view } })),
   setSearch: (search) => store.set((s) => ({ ui: { ...s.ui, search } })),
-  toggleOverviewPanel: () => store.set((s) => ({ ui: { ...s.ui, overviewOpen: !s.ui.overviewOpen } })),
-  toggleChatPanel: () => store.set((s) => ({ ui: { ...s.ui, chatOpen: !s.ui.chatOpen } })),
-  toggleNotesPanel: () => store.set((s) => ({ ui: { ...s.ui, notesOpen: !s.ui.notesOpen } })),
+  toggleNavPanel: (id) => store.set((s) => ({ ui: { ...s.ui, navOpen: { ...s.ui.navOpen, [id]: !s.ui.navOpen[id] } } })),
   setSettings: (patch) => store.set((s) => ({ settings: { ...s.settings, ...patch } })),
   // chat sessions
   newChat: () => { const id = Date.now(); store.set((s) => ({ chats: [...s.chats, { id, title: 'new chat', messages: [], artifacts: [] }], activeChat: id })) },

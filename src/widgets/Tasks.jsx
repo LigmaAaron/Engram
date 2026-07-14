@@ -91,5 +91,8 @@ function Tasks() {
   )
 }
 
-registerWidget({ id: 'tasks', title: 'Tasks', icon: ListBox, order: 10, span: 6, Widget: Tasks, Page: Tasks })
+registerWidget({
+  id: 'tasks', title: 'Tasks', icon: ListBox, order: 10, span: 6, Widget: Tasks, Page: Tasks,
+  nav: { badge: (s) => s.tasks.filter((t) => !t.done).length },
+})
 export default Tasks

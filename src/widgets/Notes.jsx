@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Notes as NotesIcon, Plus, Trash, ChevronLeft } from 'pixelarticons/react'
+import { Notes as NotesIcon, Plus, Trash, ChevronLeft, Pencil } from 'pixelarticons/react'
 import { useStore, actions, store, registerWidget, toast } from '../core'
 
 /* Notes are a list of titled entries. Two surfaces share the same store:
@@ -138,5 +138,39 @@ function NotesPage() {
   )
 }
 
-registerWidget({ id: 'notes', title: 'Notes', icon: NotesIcon, order: 40, span: 12, Widget: QuickNote, Page: NotesPage })
+// Sidebar sub-panel: three most recently touched notes, pencil to rename.
+export function NotesNavPanel() {
+  const { notes } = useStore()
+  const [renamingId, setRenamingId] = useState(null)
+  const [text, setText] = useState('')
+  const recent = [...notes].sort((a, b) => b.modified - a.modified).slice(0, 3)
+  const open = (id) => { actions.setActiveNote(id); actions.setView('notes') }
+  const commit = () => { const t = text.trim(); if (t) actions.updateNote(renamingId, { title: t }); setRenamingId(null) }
+  if (!recent.length) return <div className="nav-sub-empty">No notes yet</div>
+  return recent.map((n) => (
+    <div className="nav-sub-row" key={n.id}>
+      {renamingId === n.id ? (
+        <input className="nav-sub-rename-input" autoFocus value={text}
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') commit(); else if (e.key === 'Escape') setRenamingId(null) }} />
+      ) : (
+        <>
+          <button className="nav-sub-item" onClick={() => open(n.id)}>{n.title || 'Untitled'}</button>
+          <button className="nav-sub-rename" onClick={() => { setRenamingId(n.id); setText(n.title) }} title="Rename note"><Pencil size={12} /></button>
+        </>
+      )}
+    </div>
+  ))
+}
+
+registerWidget({
+  id: 'notes', title: 'Notes', icon: NotesIcon, order: 40, span: 12,
+  Widget: QuickNote, Page: NotesPage,
+  nav: {
+    Panel: NotesNavPanel,
+    onAdd: () => { const n = actions.addNote(''); actions.setActiveNote(n.id); actions.setView('notes') },
+  },
+})
 export default NotesPage
