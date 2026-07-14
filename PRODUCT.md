@@ -6,11 +6,11 @@ product
 
 ## Users
 
-Aaron, solo. A personal daily-use dashboard he opens repeatedly throughout the day to track tasks, agenda, and quick metrics, and to jump to frequently used links. Single-user tool, not a multi-tenant product — no onboarding flow, no auth, no account switching.
+Solo users who open a personal daily dashboard repeatedly throughout the day to track tasks, agenda, and quick metrics, and to jump to frequently used links. Single-user tool, not a multi-tenant product — no onboarding flow, no auth, no account switching.
 
 ## Product Purpose
 
-A self-contained daily dashboard: tasks, today's agenda + month calendar, at-a-glance metrics (completion, streak, event count), and a quick-launch grid of links. Built with a scripting hook (`window.Hermes`) so an external automation layer can register widgets, push notifications, and drive state later. Success looks like: opens fast, state persists across reloads, and it feels like a tool Aaron actually wants to look at every day rather than a generic template.
+A self-contained daily dashboard: tasks, today's agenda + month calendar, at-a-glance metrics (completion, streak, event count), and a quick-launch grid of links. Built with a scripting hook (`window.Engram`) so an external automation layer can register widgets, push notifications, and drive state later. Success looks like: opens fast, state persists across reloads, and it feels like a tool the user actually wants to look at every day rather than a generic template.
 
 ## Brand Personality
 

@@ -145,9 +145,10 @@ const toolSpec = Object.entries(TOOLS).map(([name, { desc, params }]) => ({
 const systemPrompt = (s, memory, extra) => {
   const now = new Date()
   const today = isoDay(now)
+  const name = s.settings?.userName || 'there'
   return [
-    "You are Engram, the assistant built into Aaron's personal dashboard. Aaron is a student — help with school. Change the dashboard directly by calling tools; don't just describe what to do.",
-    'Use ids from the state below for toggle/remove/skip/end; never invent them. Recurring events: days+until on add_event; skip_event for one-day exceptions (like no school); end_event to stop one. When Aaron tells you a lasting preference or fact, call remember. Use web_search when you need current or factual info you are unsure about, and cite result URLs. Use write_document for anything long (essays, study guides) instead of dumping it in chat. After acting, reply briefly in markdown confirming what you did.',
+    `You are Engram, the assistant built into ${name}'s personal dashboard. Help with anything ${name} needs. Change the dashboard directly by calling tools; don't just describe what to do.`,
+    `Use ids from the state below for toggle/remove/skip/end; never invent them. Recurring events: days+until on add_event; skip_event for one-day exceptions; end_event to stop one. When ${name} tells you a lasting preference or fact, call remember. Use web_search when you need current or factual info you are unsure about, and cite result URLs. Use write_document for anything long instead of dumping it in chat. After acting, reply briefly in markdown confirming what you did.`,
     '',
     'Where things live: tasks = untimed to-dos; events = anything with a time on the calendar; notes = freeform text; long-term memory = durable preferences/facts only, never calendar or task data. Never claim you added, saved, changed, or deleted something unless a tool call this turn returned a result confirming it — if you have not called the tool, call it; do not just assert the outcome.',
     ...(extra ? ['', extra] : []),

@@ -151,6 +151,23 @@ function Sidebar({ view, widgets, onShutdown }) {
   )
 }
 
+function NameModal({ open, value, onChange, onConfirm }) {
+  if (!open) return null
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <h3>Welcome to Engram</h3>
+        <p>What's your name?</p>
+        <input autoFocus className="modal-input" value={value} onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && onConfirm()} placeholder="Enter your name" />
+        <div className="modal-actions">
+          <button className="nav-item" disabled={!value.trim()} onClick={onConfirm}>Continue</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ShutdownModal({ open, onCancel, onConfirm }) {
   if (!open) return null
   return (
@@ -215,13 +232,19 @@ function Toaster() {
 }
 
 export default function App() {
-  const { ui, notifs } = useStore()
+  const { ui, notifs, settings } = useStore()
   const widgets = useWidgets()
   const [bellOpen, setBellOpen] = useState(false)
   const [seen, setSeen] = useState(0)
   const [confirmShutdown, setConfirmShutdown] = useState(false)
   const [shutDown, setShutDown] = useState(false)
+  const [askName, setAskName] = useState(false)
+  const [nameInput, setNameInput] = useState(settings.userName)
   const unread = notifs.length - seen
+
+  useEffect(() => {
+    if (!settings.userName) setAskName(true)
+  }, [])
 
   const solo = ui.view !== 'overview'
   const shown = solo ? widgets.filter((w) => w.id === ui.view) : widgets.filter((w) => w.grid !== false)
@@ -234,7 +257,7 @@ export default function App() {
       <main id="main">
         <div className="topbar">
           <div className="greeting">
-            <h1>Good {greetPart()}, Aaron</h1>
+            <h1>Good {greetPart()}, {settings.userName}</h1>
             <p>{todayStr()}</p>
           </div>
           <div className="topbar-right">
@@ -260,6 +283,12 @@ export default function App() {
       </main>
       <Toaster />
       <NotifPanel open={bellOpen} notifs={notifs} onClose={() => setBellOpen(false)} />
+      <NameModal
+        open={askName}
+        value={nameInput}
+        onChange={setNameInput}
+        onConfirm={() => { actions.setSettings({ userName: nameInput.trim() }); setAskName(false) }}
+      />
       <ShutdownModal
         open={confirmShutdown}
         onCancel={() => setConfirmShutdown(false)}
