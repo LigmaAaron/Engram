@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { readFile, appendFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { makeStore } from './scripts/state-store.mjs'
+import { runAgent, searchWeb } from './scripts/agent.mjs'
 
 // File-backed persistence for the dashboard. Browsers can't write to disk, so
 // the app GETs/POSTs its whole state here and the dev server keeps it in
@@ -42,29 +43,83 @@ function dataStore() {
         res.writeHead(405).end()
       })
 
-      // Web search for the chat agent: proxies DuckDuckGo's HTML results
-      // (no API key) and scrapes the top hits server-side to dodge CORS.
-      // ponytail: regex scrape of one known page layout — swap for a search API if DDG breaks it.
+      // Web search for the chat agent (see searchWeb in scripts/agent.mjs, shared
+      // with the agent's web_search tool). ponytail: DDG HTML scrape, no API key.
       server.middlewares.use('/__search', async (req, res) => {
         const q = new URL(req.url, 'http://localhost').searchParams.get('q') || ''
         try {
-          const html = await (await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q), {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh) AaronOS' },
-          })).text()
-          const strip = (h) => h.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim()
-          const re = /class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g
-          const results = []
-          let m
-          while ((m = re.exec(html)) && results.length < 5) {
-            const uddg = /uddg=([^&"]+)/.exec(m[1])
-            results.push({ title: strip(m[2]), url: uddg ? decodeURIComponent(uddg[1]) : m[1], snippet: strip(m[3]) })
-          }
           res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify(results))
+          res.end(JSON.stringify(await searchWeb(q)))
         } catch (e) {
           res.writeHead(502, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: e.message }))
         }
+      })
+
+      // ---- Server-side chat agent ----
+      // A generation belongs to this Node process, not a browser tab: the loop
+      // runs in scripts/agent.mjs and streams over SSE, so reloading, switching
+      // chats, or closing the window can't kill an in-flight reply. `runs` tracks
+      // one live generation per chatId; a reconnecting tab reattaches to it.
+      const runs = new Map() // chatId -> { subscribers:Set<res>, controller, partial }
+      const sseOpen = (res) => { res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' }); res.write(':\n\n') }
+      const sseSend = (res, ev) => res.write(`event: ${ev.type}\ndata: ${JSON.stringify(ev)}\n\n`)
+      const readBody = (req) => new Promise((resolve) => { let b = ''; req.on('data', (c) => { b += c }); req.on('end', () => { try { resolve(JSON.parse(b || '{}')) } catch { resolve({}) } }) })
+
+      // On boot, a `generating` flag left in state.json is stale (the process
+      // that owned it is gone) — clear it so the UI doesn't show a dead bubble.
+      store.load().then((txt) => {
+        const s = JSON.parse(txt)
+        if (s && s.generating != null) { s.generating = null; store.save(JSON.stringify(s)) }
+      }).catch(() => {})
+
+      server.middlewares.use('/__chat/stop', async (req, res) => {
+        if (req.method !== 'POST') { res.writeHead(405).end(); return }
+        const { chatId } = await readBody(req)
+        runs.get(chatId)?.controller.abort()
+        res.writeHead(204).end()
+      })
+
+      server.middlewares.use('/__chat', async (req, res) => {
+        // GET reattaches a tab to an in-flight generation (e.g. after reload).
+        if (req.method === 'GET') {
+          const chatId = Number(new URL(req.url, 'http://localhost').searchParams.get('chatId'))
+          const run = runs.get(chatId)
+          sseOpen(res)
+          if (!run) {
+            // Nothing running — push current state so the tab clears any stale
+            // `generating` flag it reloaded with, then close.
+            const state = await store.load().then(JSON.parse).catch(() => null)
+            if (state) sseSend(res, { type: 'state', state })
+            sseSend(res, { type: 'done' }); res.end(); return
+          }
+          run.subscribers.add(res)
+          req.on('close', () => run.subscribers.delete(res))
+          if (run.partial.content || run.partial.thinking) sseSend(res, { type: 'delta', ...run.partial })
+          return
+        }
+        if (req.method !== 'POST') { res.writeHead(405).end(); return }
+        const body = await readBody(req)
+        const chatId = body.chatId
+        sseOpen(res)
+        // Already running for this chat → just attach as another viewer.
+        const existing = runs.get(chatId)
+        if (existing) {
+          existing.subscribers.add(res)
+          req.on('close', () => existing.subscribers.delete(res))
+          if (existing.partial.content || existing.partial.thinking) sseSend(res, { type: 'delta', ...existing.partial })
+          return
+        }
+        const run = { subscribers: new Set([res]), controller: new AbortController(), partial: { content: '', thinking: '' } }
+        runs.set(chatId, run)
+        req.on('close', () => run.subscribers.delete(res))
+        const onEvent = (ev) => {
+          if (ev.type === 'delta') run.partial = { content: ev.content, thinking: ev.thinking }
+          for (const r of run.subscribers) sseSend(r, ev)
+        }
+        runAgent({ store, chatId, userText: body.userText, runText: body.runText, extra: body.extra, regenerate: body.regenerate, signal: run.controller.signal, onEvent, memoryFile: MEMORY_FILE })
+          .catch((e) => onEvent({ type: 'error', message: e.message }))
+          .finally(() => { runs.delete(chatId); for (const r of run.subscribers) r.end() })
       })
 
       // GET reads the memory markdown; POST appends one timestamped note to it.

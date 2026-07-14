@@ -1,5 +1,5 @@
 #!/bin/bash
-# Rebuilds AaronOS.app and cuts a GitHub release for every commit on main.
+# Rebuilds Engram.app and cuts a GitHub release for every commit on main.
 # ponytail: runs in the foreground on every commit (network round-trip to
 # GitHub included). Move to a background job if commit latency starts to bother you.
 set -e
@@ -13,6 +13,6 @@ SHA=$(git rev-parse --short HEAD)
 TAG="build-$SHA"
 
 git push origin main
-gh release create "$TAG" dist/AaronOS.app.zip \
+gh release create "$TAG" dist/Engram.app.zip \
   --title "$TAG" \
   --notes "Auto build from commit $(git log -1 --format=%s)"

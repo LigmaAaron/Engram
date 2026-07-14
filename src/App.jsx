@@ -1,26 +1,146 @@
 import { useEffect, useState } from 'react'
-import { Grid3x3, Settings2, Bell, Search, Cpu, Power } from 'pixelarticons/react'
-import { useStore, useWidgets, actions, notify, on } from './core'
+import { Grid3x3, Settings2, Bell, Search, Cpu, Power, ChevronDown, Pencil, Plus } from 'pixelarticons/react'
+import { useStore, useWidgets, actions, notify, on, isoDay, occursOn } from './core'
 import { CommandBar } from './widgets/Chat'
 
 const greetPart = () => { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening' }
 const todayStr = () => new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
 function Sidebar({ view, widgets, onShutdown }) {
+  const { chats, notes, tasks, events, streak, ui } = useStore()
+  const [renamingId, setRenamingId] = useState(null)
+  const [renameText, setRenameText] = useState('')
+  const [renamingNoteId, setRenamingNoteId] = useState(null)
+  const [renameNoteText, setRenameNoteText] = useState('')
   const nav = [{ id: 'overview', title: 'Overview', icon: Grid3x3 }, ...widgets.filter((w) => w.page !== false)]
+  const recentChats = chats.slice(-3).reverse()
+  const recentNotes = [...notes].sort((a, b) => b.modified - a.modified).slice(0, 3)
+  const openChat = (id) => { actions.setActiveChat(id); actions.setView('chat') }
+  const openNote = (id) => { actions.setActiveNote(id); actions.setView('notes') }
+  const startRename = (c) => { setRenamingId(c.id); setRenameText(c.title) }
+  const commitRename = () => {
+    const t = renameText.trim()
+    if (t) actions.renameChat(renamingId, t)
+    setRenamingId(null)
+  }
+  const startRenameNote = (n) => { setRenamingNoteId(n.id); setRenameNoteText(n.title) }
+  const commitRenameNote = () => {
+    const t = renameNoteText.trim()
+    if (t) actions.updateNote(renamingNoteId, { title: t })
+    setRenamingNoteId(null)
+  }
+  const done = tasks.filter((t) => t.done).length
+  const openTasks = tasks.length - done
+  const todayIso = isoDay()
+  const todayEventCount = events.filter((e) => occursOn(e, todayIso)).length
+  const navBadge = { tasks: openTasks, calendar: todayEventCount }
+  const overviewStats = [
+    { lbl: 'Completed', val: done },
+    { lbl: 'Open tasks', val: openTasks },
+    { lbl: 'Day streak', val: streak.count },
+    { lbl: "Today's events", val: todayEventCount },
+  ]
   return (
     <nav id="sidebar">
-      <div className="brand"><div className="logo"><Cpu size={16} /></div><div className="name">AaronOS</div></div>
+      <div className="brand"><div className="logo"><Cpu size={16} /></div><div className="name">Engram</div></div>
       <div className="nav">
-        {nav.map((n) => (
+        {nav.map((n) => n.id === 'overview' ? (
+          <div className="nav-group" key={n.id}>
+            <div className={'nav-item nav-item-split' + (view === n.id ? ' active' : '')}>
+              <button className="nav-item-main" onClick={() => actions.setView('overview')}>
+                <n.icon size={18} /><span className="nav-label-txt">{n.title}</span>
+              </button>
+              <button className={'nav-expand' + (ui.overviewOpen ? ' open' : '')} onClick={() => actions.toggleOverviewPanel()} title="Metrics">
+                <ChevronDown size={14} />
+              </button>
+            </div>
+            {ui.overviewOpen && (
+              <div className="nav-sub">
+                {overviewStats.map((s) => (
+                  <div className="nav-sub-stat" key={s.lbl}><span>{s.lbl}</span><span>{s.val}</span></div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : n.id === 'chat' ? (
+          <div className="nav-group" key={n.id}>
+            <div className={'nav-item nav-item-split' + (view === n.id ? ' active' : '')}>
+              <button className="nav-item-main" onClick={() => actions.setView('chat')}>
+                <n.icon size={18} /><span className="nav-label-txt">{n.title}</span>
+              </button>
+              <button className={'nav-expand' + (ui.chatOpen ? ' open' : '')} onClick={() => actions.toggleChatPanel()} title="Recent chats">
+                <ChevronDown size={14} />
+              </button>
+            </div>
+            {ui.chatOpen && (
+              <div className="nav-sub">
+                {recentChats.length === 0
+                  ? <div className="nav-sub-empty">No chats yet</div>
+                  : recentChats.map((c) => (
+                      <div className="nav-sub-row" key={c.id}>
+                        {renamingId === c.id ? (
+                          <input className="nav-sub-rename-input" autoFocus value={renameText}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => setRenameText(e.target.value)}
+                            onBlur={commitRename}
+                            onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); else if (e.key === 'Escape') setRenamingId(null) }} />
+                        ) : (
+                          <>
+                            <button className="nav-sub-item" onClick={() => openChat(c.id)}>{c.title}</button>
+                            <button className="nav-sub-rename" onClick={() => startRename(c)} title="Rename chat"><Pencil size={12} /></button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+              </div>
+            )}
+          </div>
+        ) : n.id === 'notes' ? (
+          <div className="nav-group" key={n.id}>
+            <div className={'nav-item nav-item-split' + (view === n.id ? ' active' : '')}>
+              <button className="nav-item-main" onClick={() => actions.setView('notes')}>
+                <n.icon size={18} /><span className="nav-label-txt">{n.title}</span>
+              </button>
+              <button className="nav-add" onClick={() => { const nt = actions.addNote(''); actions.setActiveNote(nt.id); actions.setView('notes') }} title="New note">
+                <Plus size={14} />
+              </button>
+              <button className={'nav-expand' + (ui.notesOpen ? ' open' : '')} onClick={() => actions.toggleNotesPanel()} title="Recent notes">
+                <ChevronDown size={14} />
+              </button>
+            </div>
+            {ui.notesOpen && (
+              <div className="nav-sub">
+                {recentNotes.length === 0
+                  ? <div className="nav-sub-empty">No notes yet</div>
+                  : recentNotes.map((c) => (
+                      <div className="nav-sub-row" key={c.id}>
+                        {renamingNoteId === c.id ? (
+                          <input className="nav-sub-rename-input" autoFocus value={renameNoteText}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => setRenameNoteText(e.target.value)}
+                            onBlur={commitRenameNote}
+                            onKeyDown={(e) => { if (e.key === 'Enter') commitRenameNote(); else if (e.key === 'Escape') setRenamingNoteId(null) }} />
+                        ) : (
+                          <>
+                            <button className="nav-sub-item" onClick={() => openNote(c.id)}>{c.title || 'Untitled'}</button>
+                            <button className="nav-sub-rename" onClick={() => startRenameNote(c)} title="Rename note"><Pencil size={12} /></button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+              </div>
+            )}
+          </div>
+        ) : (
           <button key={n.id} className={'nav-item' + (view === n.id ? ' active' : '')} onClick={() => actions.setView(n.id)}>
             <n.icon size={18} /><span className="nav-label-txt">{n.title}</span>
+            {navBadge[n.id] > 0 && <span className="nav-badge">{navBadge[n.id]}</span>}
           </button>
         ))}
       </div>
       <div className="nav-spacer" />
       <div className="nav">
-        <button className="nav-item" onClick={() => notify('Settings', 'Nothing to configure yet — wire it via window.AaronOS.')}>
+        <button className="nav-item" onClick={() => notify('Settings', 'Nothing to configure yet — wire it via window.Engram.')}>
           <Settings2 size={18} /><span className="nav-label-txt">Settings</span>
         </button>
         <button className="nav-item" onClick={onShutdown}>
@@ -36,7 +156,7 @@ function ShutdownModal({ open, onCancel, onConfirm }) {
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h3>Shut down AaronOS?</h3>
+        <h3>Shut down Engram?</h3>
         <p>This stops the local server. You'll need to reopen the app to use it again.</p>
         <div className="modal-actions">
           <button className="nav-item" onClick={onCancel}>Cancel</button>
@@ -51,7 +171,7 @@ function ShutdownScreen() {
   useEffect(() => { window.close() }, [])
   return (
     <div className="shutdown-screen">
-      <p>&gt; AaronOS stopped.</p>
+      <p>&gt; Engram stopped.</p>
       <p className="dim">You can close this tab.</p>
     </div>
   )

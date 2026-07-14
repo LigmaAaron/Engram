@@ -1,5 +1,5 @@
 ---
-name: AaronOS
+name: Engram
 description: A grayscale, monospace daily dashboard styled after a modern dev-tool terminal.
 colors:
   canvas: "#0a0a0a"
@@ -70,13 +70,13 @@ components:
     size: "34px"
 ---
 
-# Design System: AaronOS
+# Design System: Engram
 
 ## 1. Overview
 
 **Creative North Star: "The Dev-Tool Terminal"**
 
-AaronOS reads like a well-configured terminal emulator — Warp, Ghostty, a tuned-up VS Code integrated terminal — not a SaaS dashboard and not a hacker-movie prop. It replaced an earlier Linear-style pass (rounded corners, purple gradients, soft shadows) that the person who lives in this dashboard every day rejected on sight as "unlike me." The system is built to be looked at for hours without fatigue and to disappear into the task: tasks, agenda, metrics, a launcher.
+Engram reads like a well-configured terminal emulator — Warp, Ghostty, a tuned-up VS Code integrated terminal — not a SaaS dashboard and not a hacker-movie prop. It replaced an earlier Linear-style pass (rounded corners, purple gradients, soft shadows) that the person who lives in this dashboard every day rejected on sight as "unlike me." The system is built to be looked at for hours without fatigue and to disappear into the task: tasks, agenda, metrics, a launcher.
 
 It explicitly rejects two poles at once: the *generic SaaS dashboard* (decorative gradients, floaty shadows, rounded pills, a brand-purple accent doing no functional work) and the *generic hacker terminal* (neon green-on-black, CRT scanlines, glitch text, Matrix rain). What's left is closer to reading `man ls` in a stock terminal, but with real information density and real interactivity.
 

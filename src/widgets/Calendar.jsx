@@ -5,11 +5,11 @@ import { Time } from '@internationalized/date'
 import { useStore, actions, registerWidget, isoDay, occursOn, toast } from '../core'
 
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+const DOW3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const DAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const WEEKDAYS = [1, 2, 3, 4, 5]
 const WEEKEND = [0, 6]
-const HOUR = 44   // px per hour on the timeline
-const GUTTER = 44 // px reserved for hour labels
+const GUTTER = 44 // px reserved for hour labels on the timeline
 
 // Plain-English recurrence for a timeblock chip: "every day", "every weekend",
 // "every weekday except Wednesday", or a fallback list of day names.
@@ -72,15 +72,63 @@ function layoutBlocks(items) {
   return out
 }
 
-function Today() {
-  const { events, schedule } = useStore()
-  const [view, setView] = useState(new Date())
-  const [sel, setSel] = useState(new Date())   // day whose timeline is shown
+// Cell array for a month view: leading/trailing nulls pad to full weeks.
+function monthCells(view) {
+  const y = view.getFullYear(), m = view.getMonth()
+  const first = new Date(y, m, 1), count = new Date(y, m + 1, 0).getDate()
+  const lead = first.getDay(), trail = (7 - ((lead + count) % 7)) % 7
+  return { y, m, first, cells: [...Array(lead).fill(null), ...Array.from({ length: count }, (_, i) => i + 1), ...Array(trail).fill(null)] }
+}
+
+// Add-event/class form for the selected day. Shared by the overview widget and
+// the Today page. "Repeats" checked = recurring class on the picked days;
+// unchecked = a one-off event on the selected day. Leaves recurring/days as-is
+// after add, so setting up several classes in a row doesn't require re-checking.
+function AddForm({ sel }) {
   const [title, setTitle] = useState('')
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [recurring, setRecurring] = useState(false)
   const [days, setDays] = useState([1, 2, 3, 4, 5])
+  const add = () => {
+    if (!title.trim() || !start) return
+    if (recurring && days.length) actions.addClass(title.trim(), start, end || fmt(mins(start) + 60), [...days].sort())
+    else actions.addEvent(start, title.trim(), isoDay(sel), undefined, end || undefined)
+    setTitle(''); setStart(''); setEnd('')
+  }
+  const toggleDay = (d) => setDays((x) => x.includes(d) ? x.filter((y) => y !== d) : [...x, d])
+  return (
+    <>
+      <div className="add-row today-add">
+        <input value={title} onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && add()} placeholder="Add event or class…" />
+        <TimeBox value={start} onChange={setStart} label="Start time" />
+        <TimeBox value={end} onChange={setEnd} label="End time" />
+        <button onClick={add} aria-label="Add"><Plus size={15} /></button>
+      </div>
+      <label className="repeat-toggle">
+        <span className="box" onClick={() => setRecurring((r) => !r)}>
+          {recurring ? <CheckboxOn size={14} /> : <Checkbox size={14} />}
+        </span>
+        Repeats weekly
+      </label>
+      <div className={'repeat-days-wrap' + (recurring ? ' open' : '')}>
+        <div className="repeat-days-inner">
+          <div className="day-picks">
+            {DOW.map((l, d) => (
+              <button key={d} className={'day-pick' + (days.includes(d) ? ' on' : '')} onClick={() => toggleDay(d)}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// The selected day's classes + events as duration-sized blocks on an hour
+// ruler. `hour` = px per hour (the Today page's rail uses a taller scale).
+function DayTimeline({ sel, hour = 44 }) {
+  const { events, schedule } = useStore()
   const [, setTick] = useState(0)
   useEffect(() => { const t = setInterval(() => setTick((x) => x + 1), 30000); return () => clearInterval(t) }, [])
 
@@ -101,17 +149,6 @@ function Today() {
   const h0 = items.length ? Math.min(...items.map((b) => Math.floor(b.startM / 60))) : 0
   const h1 = items.length ? Math.max(...items.map((b) => Math.ceil(b.endM / 60))) : 0
 
-  // "Repeats" checked = recurring class on the picked days; unchecked = a
-  // one-off event today. Recurring events (repeat/skip/end) are managed
-  // through the chat agent. Leaves recurring/days as-is after add, so
-  // setting up several classes in a row doesn't require re-checking it.
-  const add = () => {
-    if (!title.trim() || !start) return
-    if (recurring && days.length) actions.addClass(title.trim(), start, end || fmt(mins(start) + 60), [...days].sort())
-    else actions.addEvent(start, title.trim(), selIso, undefined, end || undefined)
-    setTitle(''); setStart(''); setEnd('')
-  }
-  const toggleDay = (d) => setDays((x) => x.includes(d) ? x.filter((y) => y !== d) : [...x, d])
   const removeForever = (b) => {
     if (b.kind === 'class') { actions.removeClass(b.id); toast('Class removed', b.title, () => actions.restoreClass(b.raw)) }
     else { actions.removeEvent(b.id); toast('Event removed', b.title, () => actions.restoreEvent(b.raw)) }
@@ -123,105 +160,160 @@ function Today() {
     else { actions.skipEvent(b.id, selIso); toast('Skipped', b.title, () => actions.unskipEvent(b.id, selIso)) }
   }
 
-  const y = view.getFullYear(), m = view.getMonth()
-  const first = new Date(y, m, 1), days_ = new Date(y, m + 1, 0).getDate(), t = new Date()
+  if (items.length === 0) return <div className="empty">Nothing scheduled.</div>
+  return (
+    <div className="timeline" style={{ height: (h1 - h0) * hour + 14 }}>
+      {Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i).map((h) => (
+        <div key={h} className="tl-hour" style={{ top: (h - h0) * hour }}>{fmt(h * 60)}</div>
+      ))}
+      {blocks.map((b) => {
+        const past = selIsToday && b.endM <= nowM, current = selIsToday && b.startM <= nowM && nowM < b.endM
+        const recur = recurrenceLabel(b)
+        const until = b.kind === 'event' && b.raw.repeat?.until ? ` until ${b.raw.repeat.until}` : ''
+        return (
+          <div key={b.kind + b.id}
+            className={'tl-block' + (past ? ' past' : '') + (current ? ' now' : '')}
+            style={{
+              top: (b.startM - h0 * 60) / 60 * hour,
+              height: Math.max((b.endM - b.startM) / 60 * hour - 2, 18),
+              left: `calc(${GUTTER}px + ${b.left} * (100% - ${GUTTER}px))`,
+              width: `calc(${b.width} * (100% - ${GUTTER}px) - 3px)`,
+            }}>
+            <span className="tl-time">{fmt(b.startM)}–{fmt(b.endM)}</span>
+            <span className="tl-title">{b.title}</span>
+            {recur && (
+              <span className="chip tl-recur" title={recur + until}>
+                <Reload size={9} />{recur}
+              </span>
+            )}
+            <span className="tl-actions">
+              {recur && (
+                <button aria-label={`Skip ${b.title} today only`} title="Skip today only — keeps repeating after"
+                  onClick={() => skipToday(b)}><Forward size={12} /></button>
+              )}
+              <button className="del" aria-label={recur ? `Remove ${b.title} permanently` : `Remove ${b.title}`}
+                title={recur ? 'Remove permanently — all future occurrences' : undefined}
+                onClick={() => removeForever(b)}><Close size={12} /></button>
+            </span>
+          </div>
+        )
+      })}
+      {selIsToday && h0 * 60 <= nowM && nowM <= h1 * 60 && <div className="tl-now" style={{ top: (nowM - h0 * 60) / 60 * hour }} />}
+    </div>
+  )
+}
+
+// Overview widget: the original compact two-column split — time blocks on the
+// left, small month grid on the right. Deliberately untouched by the Today
+// page's layout; they share only AddForm/DayTimeline.
+function TodayCompact() {
+  const { events } = useStore()
+  const [view, setView] = useState(new Date())
+  const [sel, setSel] = useState(new Date())   // day whose timeline is shown
+  const selIsToday = isoDay(sel) === isoDay()
+
+  const { y, m, first, cells } = monthCells(view)
+  const t = new Date()
   const isToday = (d) => d === t.getDate() && m === t.getMonth() && y === t.getFullYear()
   const isSel = (d) => d === sel.getDate() && m === sel.getMonth() && y === sel.getFullYear()
   const hasEvent = (d) => events.some((e) => occursOn(e, isoDay(new Date(y, m, d))))
-  const lead = first.getDay(), trail = (7 - ((lead + days_) % 7)) % 7
-  const cells = [...Array(lead).fill(null), ...Array.from({ length: days_ }, (_, i) => i + 1), ...Array(trail).fill(null)]
-  const weeks = cells.length / 7
 
   return (
     <div className="cal-layout">
+      <div className="cal-events">
+        <div className="cal-sel-day">
+          {selIsToday ? 'Today' : sel.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+          {!selIsToday && <button className="link" onClick={() => { setSel(new Date()); setView(new Date()) }}>Today</button>}
+        </div>
+        <AddForm sel={sel} />
+        <DayTimeline sel={sel} />
+      </div>
       <div className="cal-month">
         <div className="cal-head">
           <button onClick={() => setView(new Date(y, m - 1, 1))} aria-label="Previous month"><ChevronLeft size={16} /></button>
           <strong>{first.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</strong>
           <button onClick={() => setView(new Date(y, m + 1, 1))} aria-label="Next month"><ChevronRight size={16} /></button>
         </div>
-        <div className="cal-grid" style={{ gridTemplateRows: `auto repeat(${weeks}, minmax(56px, 1fr))` }}>
+        <div className="cal-grid">
           {DOW.map((d, i) => <div className="dow" key={i}>{d}</div>)}
           {cells.map((d, i) => (
             <div key={i} onClick={() => d && setSel(new Date(y, m, d))}
-              className={'day' + (d == null ? ' muted' : '') + (d && isToday(d) ? ' today' : '') + (d && isSel(d) ? ' sel' : '') + (d && hasEvent(d) ? ' has' : '')}>
-              {d != null && <span className="day-num">{d}</span>}
-              {d != null && hasEvent(d) && <span className="day-dot" aria-label="has events" />}
-            </div>
+              className={'day' + (d == null ? ' muted' : '') + (d && isToday(d) ? ' today' : '') + (d && isSel(d) ? ' sel' : '') + (d && hasEvent(d) ? ' has' : '')}>{d}</div>
           ))}
         </div>
-      </div>
-      <div className="cal-events">
-        <div className="cal-sel-day">
-          {selIsToday ? 'Today' : sel.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
-          {!selIsToday && <button className="link" onClick={() => { setSel(new Date()); setView(new Date()) }}>Today</button>}
-        </div>
-        <div className="add-row today-add">
-          <input value={title} onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && add()} placeholder="Add event or class…" />
-          <TimeBox value={start} onChange={setStart} label="Start time" />
-          <TimeBox value={end} onChange={setEnd} label="End time" />
-          <button onClick={add} aria-label="Add"><Plus size={15} /></button>
-        </div>
-        <label className="repeat-toggle">
-          <span className="box" onClick={() => setRecurring((r) => !r)}>
-            {recurring ? <CheckboxOn size={14} /> : <Checkbox size={14} />}
-          </span>
-          Repeats weekly
-        </label>
-        <div className={'repeat-days-wrap' + (recurring ? ' open' : '')}>
-          <div className="repeat-days-inner">
-            <div className="day-picks">
-              {DOW.map((l, d) => (
-                <button key={d} className={'day-pick' + (days.includes(d) ? ' on' : '')} onClick={() => toggleDay(d)}>{l}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-        {items.length === 0
-          ? <div className="empty">Nothing scheduled.</div>
-          : <div className="timeline" style={{ height: (h1 - h0) * HOUR + 14 }}>
-              {Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i).map((h) => (
-                <div key={h} className="tl-hour" style={{ top: (h - h0) * HOUR }}>{fmt(h * 60)}</div>
-              ))}
-              {blocks.map((b) => {
-                const past = selIsToday && b.endM <= nowM, current = selIsToday && b.startM <= nowM && nowM < b.endM
-                const recur = recurrenceLabel(b)
-                const until = b.kind === 'event' && b.raw.repeat?.until ? ` until ${b.raw.repeat.until}` : ''
-                return (
-                  <div key={b.kind + b.id}
-                    className={'tl-block' + (past ? ' past' : '') + (current ? ' now' : '')}
-                    style={{
-                      top: (b.startM - h0 * 60) / 60 * HOUR,
-                      height: Math.max((b.endM - b.startM) / 60 * HOUR - 2, 18),
-                      left: `calc(${GUTTER}px + ${b.left} * (100% - ${GUTTER}px))`,
-                      width: `calc(${b.width} * (100% - ${GUTTER}px) - 3px)`,
-                    }}>
-                    <span className="tl-time">{fmt(b.startM)}–{fmt(b.endM)}</span>
-                    <span className="tl-title">{b.title}</span>
-                    {recur && (
-                      <span className="chip tl-recur" title={recur + until}>
-                        <Reload size={9} />{recur}
-                      </span>
-                    )}
-                    <span className="tl-actions">
-                      {recur && (
-                        <button aria-label={`Skip ${b.title} today only`} title="Skip today only — keeps repeating after"
-                          onClick={() => skipToday(b)}><Forward size={12} /></button>
-                      )}
-                      <button className="del" aria-label={recur ? `Remove ${b.title} permanently` : `Remove ${b.title}`}
-                        title={recur ? 'Remove permanently — all future occurrences' : undefined}
-                        onClick={() => removeForever(b)}><Close size={12} /></button>
-                    </span>
-                  </div>
-                )
-              })}
-              {selIsToday && h0 * 60 <= nowM && nowM <= h1 * 60 && <div className="tl-now" style={{ top: (nowM - h0 * 60) / 60 * HOUR }} />}
-            </div>}
       </div>
     </div>
   )
 }
 
-registerWidget({ id: 'calendar', title: 'Today', icon: CalIcon, span: 12, Component: Today })
+// Today page: the full-screen calendar. Big month grid on the left with event
+// titles inside the day cells; a day rail on the right with prev/next-day
+// stepping, the add form, and a taller hour timeline. Own tp-* markup/CSS so
+// it can evolve without touching the overview widget above.
+function TodayPage() {
+  const { events } = useStore()
+  const [view, setView] = useState(new Date())
+  const [sel, setSel] = useState(new Date())
+
+  const { y, m, first, cells } = monthCells(view)
+  const weeks = cells.length / 7
+  const selIso = isoDay(sel), todayIso = isoDay()
+  const today = new Date()
+  const offToday = selIso !== todayIso || y !== today.getFullYear() || m !== today.getMonth()
+
+  // Events shown inside a month cell (classes stay off the grid — they repeat
+  // every school day and would fill every cell with the same noise).
+  const evsOn = (d) => events.filter((e) => occursOn(e, isoDay(new Date(y, m, d)))).sort((a, b) => mins(a.time) - mins(b.time))
+  const stepDay = (n) => { const d = new Date(sel); d.setDate(d.getDate() + n); setSel(d); setView(new Date(d.getFullYear(), d.getMonth(), 1)) }
+  const goToday = () => { setSel(new Date()); setView(new Date()) }
+
+  return (
+    <div className="tp">
+      <div className="tp-month">
+        <div className="tp-mhead">
+          <strong>{first.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</strong>
+          {offToday && <button className="link" onClick={goToday}>Today</button>}
+          <button className="nav" onClick={() => setView(new Date(y, m - 1, 1))} aria-label="Previous month"><ChevronLeft size={16} /></button>
+          <button className="nav" onClick={() => setView(new Date(y, m + 1, 1))} aria-label="Next month"><ChevronRight size={16} /></button>
+        </div>
+        <div className="tp-grid" style={{ gridTemplateRows: `auto repeat(${weeks}, minmax(72px, 1fr))` }}>
+          {DOW3.map((d) => <div className="dow" key={d}>{d}</div>)}
+          {cells.map((d, i) => {
+            if (d == null) return <div key={i} className="tp-cell muted" />
+            const iso = isoDay(new Date(y, m, d))
+            const evs = evsOn(d)
+            return (
+              <div key={i} className={'tp-cell' + (iso === todayIso ? ' today' : '') + (iso === selIso ? ' sel' : '')}
+                onClick={() => setSel(new Date(y, m, d))}>
+                <span className="num">{d}</span>
+                {evs.slice(0, 3).map((e) => (
+                  <span key={e.id} className="tp-evt"><span className="t">{e.time}</span> {e.title}</span>
+                ))}
+                {evs.length > 3 && <span className="tp-more">+{evs.length - 3} more</span>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <aside className="tp-rail">
+        <div className="tp-rhead">
+          <button className="nav" onClick={() => stepDay(-1)} aria-label="Previous day"><ChevronLeft size={14} /></button>
+          <strong>{selIso === todayIso ? 'Today' : sel.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</strong>
+          <button className="nav" onClick={() => stepDay(1)} aria-label="Next day"><ChevronRight size={14} /></button>
+        </div>
+        <AddForm sel={sel} />
+        <div className="tp-scroll"><DayTimeline sel={sel} hour={52} /></div>
+      </aside>
+    </div>
+  )
+}
+
+// Overview shows the compact widget; the dedicated page gets the full-screen
+// layout. Completely separate markup so one can change without breaking the other.
+function Today() {
+  const { ui } = useStore()
+  return ui.view === 'calendar' ? <TodayPage /> : <TodayCompact />
+}
+
+registerWidget({ id: 'calendar', title: 'Calendar', icon: CalIcon, span: 12, Component: Today })
 export default Today
