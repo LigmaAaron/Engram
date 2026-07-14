@@ -4,13 +4,9 @@ import App from './App'
 import { bumpStreak, dailyBrief, hydrate } from './core'
 import './styles.css'
 
-// Import widgets for their registration side-effects. Add a file here to add a widget.
-import './widgets/Tasks'
-import './widgets/Metrics'
-import './widgets/Calendar'
-import './widgets/Notes'
-import './widgets/Launcher'
-import './widgets/Chat'
+// Every folder in src/modules/ with an index.jsx self-registers via registerWidget.
+// Adding a module = adding a folder; see src/modules/README.md.
+import.meta.glob('./modules/*/index.jsx', { eager: true })
 
 // Load saved state from disk first so the app renders with it, not defaults.
 await hydrate()

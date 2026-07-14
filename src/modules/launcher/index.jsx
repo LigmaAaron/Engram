@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Terminal, Plus, Close, ExternalLink, Mail, Calendar, Folder, Message } from 'pixelarticons/react'
-import { useStore, actions, registerWidget, toast } from '../core'
-import Dropdown from '../Dropdown'
+import { useStore, actions, registerWidget, toast } from '../../core'
+import Dropdown from '../../Dropdown'
 
 const ICONS = { Mail, Terminal, Calendar, Folder, Message, ExternalLink }
 const ICON_NAMES = { Mail: 'Mail', Terminal: 'Terminal', Calendar: 'Calendar', Folder: 'Folder', Message: 'Chat', ExternalLink: 'Link' }

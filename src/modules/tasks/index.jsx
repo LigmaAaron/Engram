@@ -14,8 +14,8 @@ import {
   Popover
 } from 'react-aria-components'
 import { parseDate } from '@internationalized/date'
-import { useStore, actions, registerWidget, isoDay, toast } from '../core'
-import { extractTags } from '../parse'
+import { useStore, actions, registerWidget, isoDay, toast } from '../../core'
+import { extractTags } from '../../parse'
 
 // Homework-aware tasks: optional due date and a class tag
 // typed inline as "#chem" anywhere in the text. Overdue = red date.

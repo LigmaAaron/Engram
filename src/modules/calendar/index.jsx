@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Calendar as CalIcon, Plus, Close, ChevronLeft, ChevronRight, Reload, Forward, Checkbox, CheckboxOn } from 'pixelarticons/react'
 import { TimeField, DateInput, DateSegment } from 'react-aria-components'
 import { Time } from '@internationalized/date'
-import { useStore, actions, registerWidget, isoDay, occursOn, toast } from '../core'
+import { useStore, actions, registerWidget, isoDay, occursOn, toast } from '../../core'
 
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const DOW3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

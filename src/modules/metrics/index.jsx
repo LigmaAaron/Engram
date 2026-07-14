@@ -1,5 +1,5 @@
 import { Chart, CheckboxOn, ListBox, Fire, Calendar } from 'pixelarticons/react'
-import { useStore, registerWidget } from '../core'
+import { useStore, registerWidget } from '../../core'
 
 function Metrics() {
   const { tasks, events, streak } = useStore()

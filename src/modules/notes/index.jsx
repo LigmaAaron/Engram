@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Notes as NotesIcon, Plus, Trash, ChevronLeft, Pencil } from 'pixelarticons/react'
-import { useStore, actions, store, registerWidget, toast } from '../core'
+import { useStore, actions, store, registerWidget, toast } from '../../core'
 
 /* Notes are a list of titled entries. Two surfaces share the same store:
    - the overview shows QuickNote, a throwaway capture box that gets sealed into

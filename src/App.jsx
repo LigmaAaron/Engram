@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Grid3x3, Settings2, Bell, Search, Cpu, Power, ChevronDown, Plus } from 'pixelarticons/react'
 import { useStore, useWidgets, actions, notify, on, isoDay, occursOn } from './core'
-import { CommandBar } from './widgets/Chat'
+import { CommandBar } from './modules/chat/index.jsx'
 
 const greetPart = () => { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening' }
 const todayStr = () => new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })

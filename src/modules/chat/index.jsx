@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { Message, Send, Trash, Plus, Square, Copy, Reload, Close, Download, FileText, Lightbulb, LightbulbOff, Pencil, ListBox, Calendar, Notes as NotesIcon, AlarmClock } from 'pixelarticons/react'
-import { useStore, actions, store, registerWidget, notify, emit, on, isoDay } from '../core'
-import { parseTaskInput, parseDue, parseTags, reuseTags } from '../parse'
-import Md from '../md'
-import Dropdown from '../Dropdown'
+import { useStore, actions, store, registerWidget, notify, emit, on, isoDay } from '../../core'
+import { parseTaskInput, parseDue, parseTags, reuseTags } from '../../parse'
+import Md from '../../md'
+import Dropdown from '../../Dropdown'
 
 // The dashboard is its own AI agent, but the agent itself runs in the Node
 // process (scripts/agent.mjs), not here: this file is a thin client that starts
