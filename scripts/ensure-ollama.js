@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process'
 
 const HOST = 'http://localhost:11434'
-const MODEL = 'qwen3.5:latest' // keep in sync with src/widgets/Chat.jsx
+const MODEL = 'qwen3.5:latest' // keep in sync with src/modules/chat/index.jsx
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const up = async () => {

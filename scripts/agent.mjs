@@ -1,5 +1,5 @@
 // The chat agent, server-side. This is the same loop that used to run in the
-// browser (src/widgets/Chat.jsx), moved into the Node process so a generation
+// browser (src/modules/chat/index.jsx), moved into the Node process so a generation
 // belongs to the always-on app, not a tab: reloading, switching chats, or
 // closing the window can't kill an in-flight reply anymore.
 //

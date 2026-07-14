@@ -7,7 +7,7 @@ const subs = new Set()
 export const getWidgets = () => widgets
 export const onWidgets = (f) => { subs.add(f); return () => subs.delete(f) }
 export const registerWidget = (w) => {
-  if (widgets.find((x) => x.id === w.id)) return
-  widgets = [...widgets, w].sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
+  if (widgets.find((x) => x.id === w.id)) return console.warn(`registerWidget: duplicate id "${w.id}" ignored`)
+  widgets = [...widgets, w].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity))
   subs.forEach((f) => f())
 }

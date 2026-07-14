@@ -197,7 +197,7 @@ export default function App() {
           {shown.map((w) => {
             const Body = solo ? w.Page : w.Widget
             return (
-              <section className="card" key={w.id} style={{ gridColumn: `span ${solo ? 12 : w.span}` }}>
+              <section className="card" key={w.id} style={{ gridColumn: `span ${solo ? 12 : (w.span ?? 12)}` }}>
                 <div className="card-h"><w.icon size={16} /><h2>{w.title}</h2></div>
                 <div className="card-b"><Body /></div>
               </section>
