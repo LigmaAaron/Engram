@@ -517,7 +517,10 @@ button,input{font-family:inherit;}
 .set-adv{display:flex;flex-direction:column;gap:14px;padding-top:4px;border-top:1px solid var(--border-soft);}
 .set-reset-all{align-self:flex-start;border:1px solid var(--border);background:none;color:var(--text-dim);font:inherit;font-size:12px;padding:6px 10px;cursor:pointer;}
 .set-reset-all:hover{color:var(--err);border-color:var(--err);}
-.set-vis-btn{width:auto;padding:0 10px;gap:6px;}
-.set-vis-btn span{font-size:12px;}
+.set-check{display:flex;align-items:center;gap:9px;width:fit-content;cursor:pointer;font-size:12.5px;color:var(--text);outline:none;}
+.set-check-box{display:flex;color:var(--text-faint);transition:color .12s ease;}
+.set-check:hover .set-check-box{color:var(--text-dim);}
+.set-check-box.on{color:var(--ok);}
+.set-check:focus-visible .set-check-box{color:var(--text-dim);}
 .set-custom{padding-top:8px;border-top:1px solid var(--border-soft);}
 @media (max-width:760px){.set-cats{width:52px;}.set-cats .nav-label-txt{display:none;}}

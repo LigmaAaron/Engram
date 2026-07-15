@@ -36,14 +36,17 @@ function General() {
         <input className="modal-input" style={{ marginBottom: 0 }} value={settings.userName}
           onChange={(e) => actions.setSettings({ userName: e.target.value })} placeholder="Your name" />
       </label>
-      <label className="set-field">
+      {/* Not a <label>: a label re-dispatches clicks to its first labelable
+          descendant (the dropdown's <button>), so selecting a menu item would
+          instantly re-open the menu. Plain <div> + <span> caption instead. */}
+      <div className="set-field">
         <span>Main use</span>
         <Dropdown value={settings.useCase} onChange={(v) => actions.setSettings({ useCase: v })} options={USE_CASES} title="Main use" />
-      </label>
-      <label className="set-field">
+      </div>
+      <div className="set-field">
         <span>AI response style</span>
         <Dropdown value={settings.style} onChange={(v) => actions.setSettings({ style: v })} options={STYLES} title="Response style" />
-      </label>
+      </div>
     </div>
   )
 }
@@ -93,13 +96,16 @@ function Appearance() {
   )
 }
 
+// A checkbox + caption, like the task-list rows — not a bordered button with
+// an icon crammed inside. The box is the control; the label sits to its right.
 function VisRow({ label, on, onToggle }) {
   return (
-    <div className="set-field">
+    <div className="set-check" onClick={onToggle} role="checkbox" aria-checked={on} tabIndex={0}
+      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onToggle() } }}>
+      <span className={'set-check-box' + (on ? ' on' : '')}>
+        {on ? <CheckboxOn size={16} /> : <Checkbox size={16} />}
+      </span>
       <span>{label}</span>
-      <button className={'tb-btn set-vis-btn' + (on ? ' on' : '')} onClick={onToggle}>
-        {on ? <CheckboxOn size={14} /> : <Checkbox size={14} />}<span>{on ? 'Shown' : 'Hidden'}</span>
-      </button>
     </div>
   )
 }
