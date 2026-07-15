@@ -54,12 +54,22 @@ case "$st" in
   *) STYLE=direct ;;
 esac
 
+echo
+echo "Enable AI features? (requires Ollama + ~5-25GB)"
+echo "  1) Yes (recommended)"
+echo "  2) No, lightweight version only"
+read -p "> " ai_enable </dev/tty
+case "$ai_enable" in
+  2) DISABLE_AI=1 ;;
+  *) DISABLE_AI=0 ;;
+esac
+
 node -e "
 const fs = require('fs')
 const path = 'data/state.json'
 let s = {}
 try { s = JSON.parse(fs.readFileSync(path, 'utf8')) } catch {}
-s.settings = { ...(s.settings || {}), useCase: '$USE_CASE', style: '$STYLE' }
+s.settings = { ...(s.settings || {}), useCase: '$USE_CASE', style: '$STYLE', aiDisabled: '$DISABLE_AI' === '1' }
 if (!s.links) {
   const sets = {
     student:   [['Gmail','https://mail.google.com','Mail'],['Classroom','https://classroom.google.com','ExternalLink'],['Calendar','https://calendar.google.com','Calendar'],['Drive','https://drive.google.com','Folder'],['Docs','https://docs.google.com','ExternalLink']],
@@ -72,6 +82,15 @@ if (!s.links) {
 fs.mkdirSync('data', { recursive: true })
 fs.writeFileSync(path, JSON.stringify(s))
 "
+
+if [ "$DISABLE_AI" = "1" ]; then
+  echo "Installing lightweight version without AI features..."
+  npm install
+  node scripts/build-app.mjs
+  open "$HOME/Applications/Engram.app"
+  echo "Done. Engram is running — look for its icon in the menu bar (installed to ~/Applications, not /Applications). AI features are disabled."
+  exit 0
+fi
 
 ARCH=$(uname -m)
 RAM_GB=$(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 ))
