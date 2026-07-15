@@ -4,7 +4,7 @@ import { readFile, appendFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { makeStore } from './scripts/state-store.mjs'
 import { runAgent, searchWeb } from './scripts/agent.mjs'
-import { loadExtensions, addLibrary, removeLibrary, installExtension, uninstallExtension } from './scripts/extensions-store.mjs'
+import { loadExtensions, addLibrary, removeLibrary, installExtension, uninstallExtension, checkForUpdates, updateExtension } from './scripts/extensions-store.mjs'
 
 // File-backed persistence for the dashboard. Browsers can't write to disk, so
 // the app GETs/POSTs its whole state here and the dev server keeps it in
@@ -187,6 +187,11 @@ function extensionsPlugin() {
             return send(200, await installExtension(libraryId, path, id))
           }
           if (req.method === 'DELETE' && segs[0] === 'install' && segs[1]) return send(200, await uninstallExtension(segs[1]))
+          if (req.method === 'POST' && segs[0] === 'check' && segs.length === 1) {
+            const { data, newlyOutdated } = await checkForUpdates()
+            return send(200, { ...data, newlyOutdated })
+          }
+          if (req.method === 'POST' && segs[0] === 'update' && segs[1]) return send(200, await updateExtension(segs[1]))
           send(404, { error: 'not found' })
         } catch (e) {
           send(400, { error: e.message })

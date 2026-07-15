@@ -8,7 +8,7 @@
 // dance like state.json — a bad write self-heals on the next addLibrary
 // rescan).
 import { spawn } from 'node:child_process'
-import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, rm, rename } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, join, basename } from 'node:path'
 
@@ -50,6 +50,20 @@ async function readInfoJson(repoDir, path) {
 async function readCreator(repoDir) {
   try {
     return str(await run('git', ['log', '-1', '--format=%an', 'HEAD'], { cwd: repoDir }))
+  } catch {
+    return undefined
+  }
+}
+
+// `git ls-tree HEAD -- <path>` returns one line — mode, type, object hash,
+// path — for that folder. The hash fingerprints the folder's entire
+// contents (recursively) as pure metadata, no blob content fetched.
+// Verified locally: differs when a file inside the folder changes, stable
+// otherwise.
+async function readTreeHash(repoDir, path) {
+  try {
+    const line = (await run('git', ['ls-tree', 'HEAD', '--', path], { cwd: repoDir })).trim()
+    return line.split(/\s+/)[2] || undefined
   } catch {
     return undefined
   }
@@ -101,15 +115,12 @@ export async function loadExtensions() {
   return load()
 }
 
-export async function addLibrary(url) {
-  const u = String(url || '').trim()
-  if (!u) throw new Error('missing url')
-  const data = await load()
-  const slug = slugFromUrl(u)
-  if (data.libraries.some((l) => l.id === slug)) throw new Error(`library already added: ${slug}`)
-  const dir = join(CACHE_DIR, slug)
-  await mkdir(CACHE_DIR, { recursive: true })
-  await run('git', ['clone', '--no-checkout', '--depth', '1', '--filter=blob:none', u, dir])
+// Scans a cached clone's current HEAD: every folder containing an
+// index.jsx, its info.json name/description (if any), its tree-hash
+// fingerprint, plus the library's own root info.json and commit author.
+// Shared by addLibrary (first scan) and refreshLibrary (re-scan after
+// fetching the remote's latest commit).
+async function scanLibrary(dir) {
   const tree = await run('git', ['ls-tree', '-r', '--name-only', 'HEAD'], { cwd: dir })
   const paths = tree.split('\n')
     .filter((p) => p.endsWith('/index.jsx'))
@@ -122,17 +133,28 @@ export async function addLibrary(url) {
       id: safeId(basename(p)),
       title: str(info?.name) || basename(p),
       description: str(info?.description),
+      treeHash: await readTreeHash(dir, p),
     })
   }
   const libInfo = await readInfoJson(dir, '')
-  data.libraries.push({
-    id: slug,
-    url: u,
+  return {
     name: str(libInfo?.name),
     description: str(libInfo?.description),
     creator: await readCreator(dir),
     extensions,
-  })
+  }
+}
+
+export async function addLibrary(url) {
+  const u = String(url || '').trim()
+  if (!u) throw new Error('missing url')
+  const data = await load()
+  const slug = slugFromUrl(u)
+  if (data.libraries.some((l) => l.id === slug)) throw new Error(`library already added: ${slug}`)
+  const dir = join(CACHE_DIR, slug)
+  await mkdir(CACHE_DIR, { recursive: true })
+  await run('git', ['clone', '--no-checkout', '--depth', '1', '--filter=blob:none', u, dir])
+  data.libraries.push({ id: slug, url: u, ...(await scanLibrary(dir)) })
   await save(data)
   return data
 }
@@ -144,6 +166,23 @@ export async function removeLibrary(id) {
   data.libraries = data.libraries.filter((l) => l.id !== id)
   await save(data)
   return data
+}
+
+// Advances a library's cached (--no-checkout) clone to the remote's latest
+// commit without ever checking out a working tree, then re-scans it in
+// place. Verified locally: `git fetch --filter=blob:none origin HEAD` +
+// `git update-ref HEAD FETCH_HEAD` works cleanly against a --no-checkout
+// clone.
+export async function refreshLibrary(id) {
+  const data = await load()
+  const lib = data.libraries.find((l) => l.id === id)
+  if (!lib) throw new Error(`unknown library: ${id}`)
+  const dir = join(CACHE_DIR, id)
+  await run('git', ['fetch', '--filter=blob:none', 'origin', 'HEAD'], { cwd: dir })
+  await run('git', ['update-ref', 'HEAD', 'FETCH_HEAD'], { cwd: dir })
+  Object.assign(lib, await scanLibrary(dir))
+  await save(data)
+  return lib
 }
 
 export async function installExtension(libraryId, path, id) {
@@ -158,7 +197,7 @@ export async function installExtension(libraryId, path, id) {
   if (existsSync(dest)) throw new Error(`src/modules/${extId} already exists`)
   await mkdir(dest, { recursive: true })
   await archiveExtract(join(CACHE_DIR, libraryId), candidate.path, dest)
-  data.installed.push({ id: extId, library: libraryId, path: candidate.path })
+  data.installed.push({ id: extId, library: libraryId, path: candidate.path, treeHash: candidate.treeHash, outdated: false })
   await save(data)
   return data
 }
@@ -168,6 +207,61 @@ export async function uninstallExtension(id) {
   if (!data.installed.some((e) => e.id === id)) throw new Error(`not an installed extension: ${id}`)
   await rm(join(MODULES_DIR, id), { recursive: true, force: true })
   data.installed = data.installed.filter((e) => e.id !== id)
+  await save(data)
+  return data
+}
+
+// Refreshes every library that has at least one installed extension (skips
+// libraries nobody installed anything from — nothing to check), then
+// re-derives each installed entry's `outdated` flag by comparing its
+// snapshotted treeHash to the freshly-scanned one for that (library, path).
+// A library whose refresh fails (offline, remote gone) is left exactly as
+// it was — refreshLibrary only persists on success, so a thrown error here
+// simply means that library's data doesn't change this round.
+export async function checkForUpdates() {
+  const libraryIds = new Set((await load()).installed.map((e) => e.library))
+  for (const libId of libraryIds) {
+    try { await refreshLibrary(libId) } catch { /* leave that library's last known state alone */ }
+  }
+  const data = await load()
+  const newlyOutdated = []
+  for (const entry of data.installed) {
+    const lib = data.libraries.find((l) => l.id === entry.library)
+    const current = lib?.extensions.find((e) => e.path === entry.path)
+    const wasOutdated = !!entry.outdated
+    entry.outdated = !current || current.treeHash !== entry.treeHash
+    if (entry.outdated && !wasOutdated) newlyOutdated.push(entry.id)
+  }
+  await save(data)
+  return { data, newlyOutdated }
+}
+
+// Re-fetches one extension's folder into a temp directory first; only once
+// that succeeds does it delete the old src/modules/<id> and rename the temp
+// directory into place. A failed fetch/extract leaves the old, working
+// version fully intact and still flagged outdated.
+export async function updateExtension(id) {
+  const data = await load()
+  const entry = data.installed.find((e) => e.id === id)
+  if (!entry) throw new Error(`not an installed extension: ${id}`)
+  const lib = data.libraries.find((l) => l.id === entry.library)
+  if (!lib) throw new Error(`unknown library: ${entry.library}`)
+  const current = lib.extensions.find((e) => e.path === entry.path)
+  if (!current) throw new Error(`extension no longer exists in its library: ${entry.path}`)
+  const tmp = join(CACHE_DIR, `.update-${id}`)
+  await rm(tmp, { recursive: true, force: true })
+  await mkdir(tmp, { recursive: true })
+  try {
+    await archiveExtract(join(CACHE_DIR, entry.library), entry.path, tmp)
+  } catch (e) {
+    await rm(tmp, { recursive: true, force: true })
+    throw e
+  }
+  const dest = join(MODULES_DIR, id)
+  await rm(dest, { recursive: true, force: true })
+  await rename(tmp, dest)
+  entry.treeHash = current.treeHash
+  entry.outdated = false
   await save(data)
   return data
 }
