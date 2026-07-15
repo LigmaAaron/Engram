@@ -18,9 +18,27 @@
   --text-faint:#686864;
   --inverse-bg:#e8e8e6;
   --inverse-text:#0a0a0a;
+  --accent:#e8e8e6;
   --ok:#5fbf72;
   --err:#e5534b;
   --font:'Departure Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Appearance > light mode. Same variable set as :root above, minus --ok/--err
+   (state hues stay shared) and --font (unaffected by theme). */
+:root[data-theme="light"]{
+  --bg:#f5f5f3;
+  --sidebar:#ffffff;
+  --surface:#ffffff;
+  --surface-2:#ececea;
+  --border:#d8d8d4;
+  --border-soft:#e6e6e2;
+  --text:#1a1a18;
+  --text-dim:#6b6b66;
+  --text-faint:#9a9a94;
+  --inverse-bg:#1a1a18;
+  --inverse-text:#f5f5f3;
+  --accent:#1a1a18;
 }
 *{box-sizing:border-box;}
 html,body,#root{height:100%;margin:0;}
@@ -40,8 +58,8 @@ button,input{font-family:inherit;}
 .nav-item .nav-label-txt{flex:1;}
 .nav-badge{flex:0 0 auto;min-width:18px;padding:1px 5px;border:1px solid currentColor;color:inherit;font-size:11px;font-weight:700;line-height:1.4;text-align:center;opacity:.75;}
 .nav-item:hover{background:var(--surface-2);color:var(--text);}
-.nav-item.active{background:var(--inverse-bg);color:var(--inverse-text);border-color:var(--inverse-bg);}
-.nav-item.active:hover{background:var(--inverse-bg);}
+.nav-item.active{background:var(--accent);color:var(--inverse-text);border-color:var(--accent);}
+.nav-item.active:hover{background:var(--accent);}
 .nav-spacer{flex:1;}
 .nav-group{display:flex;flex-direction:column;}
 .nav-item-split{display:flex;align-items:stretch;gap:0;padding:0;}
@@ -256,7 +274,7 @@ button,input{font-family:inherit;}
 .tb-rename{max-width:180px;background:var(--surface-2);border:1px solid var(--text-dim);color:var(--text);font:inherit;font-size:12px;padding:6px 8px;outline:none;}
 .tb-btn{width:28px;height:28px;flex:0 0 auto;border:1px solid var(--border);background:var(--surface-2);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s ease,border-color .15s ease;}
 .tb-btn:hover{color:var(--text);border-color:var(--text-faint);}
-.tb-btn.on{background:var(--inverse-bg);color:var(--inverse-text);border-color:var(--inverse-bg);}
+.tb-btn.on{background:var(--accent);color:var(--inverse-text);border-color:var(--accent);}
 .tb-gap{flex:1;}
 .chat-cols{display:grid;grid-template-columns:1fr;gap:14px;flex:1;min-height:0;}
 .chat-cols.split{grid-template-columns:3fr 2fr;}
