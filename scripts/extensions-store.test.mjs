@@ -48,7 +48,7 @@ await mkdir(join(projectDir, 'src', 'modules'), { recursive: true })
 const originalCwd = cwd()
 chdir(projectDir)
 
-const { addLibrary, installExtension, uninstallExtension, removeLibrary, loadExtensions } =
+const { addLibrary, installExtension, uninstallExtension, removeLibrary, loadExtensions, checkForUpdates, updateExtension } =
   await import(join(originalCwd, 'scripts', 'extensions-store.mjs'))
 
 try {
@@ -100,6 +100,50 @@ try {
   assert.equal(plainLib.description, undefined)
   assert.equal(plainLib.extensions[0].title, 'bar-ext')
   assert.equal(plainLib.extensions[0].description, undefined)
+
+  // 9. installing snapshots a treeHash and starts not-outdated
+  //    (step 6 left an installed copy of foo-ext on disk after its library
+  //    was removed — clear it so the id is free to reinstall under)
+  await uninstallExtension('foo-ext')
+  data = await addLibrary(remote)
+  const libId2 = data.libraries.find((l) => l.url === remote).id
+  data = await installExtension(libId2, 'foo-ext', 'foo-ext')
+  let entry = data.installed.find((e) => e.id === 'foo-ext')
+  assert.ok(entry.treeHash, 'installed entry has a treeHash')
+  assert.equal(entry.outdated, false)
+
+  // 10. mutating the remote and checking for updates flags just that
+  //     extension, and reports it as newly outdated
+  await writeFile(join(remote, 'foo-ext', 'index.jsx'), 'export default function(){ return 2 }\n')
+  await run('git', ['add', '-A'], { cwd: remote })
+  await run('git', ['-c', 'user.email=t@t.com', '-c', 'user.name=Fixture Author', 'commit', '-q', '-m', 'v2'], { cwd: remote })
+
+  let result = await checkForUpdates()
+  assert.deepEqual(result.newlyOutdated, ['foo-ext'])
+  assert.equal(result.data.installed.find((e) => e.id === 'foo-ext').outdated, true)
+
+  // 11. checking again with no further remote change re-confirms outdated
+  //     but does not report it as newly outdated a second time
+  result = await checkForUpdates()
+  assert.equal(result.data.installed.find((e) => e.id === 'foo-ext').outdated, true)
+  assert.deepEqual(result.newlyOutdated, [])
+
+  // 12. updating rewrites the file, clears outdated, and adopts the new treeHash
+  data = await updateExtension('foo-ext')
+  const updatedContent = await readFile(join(projectDir, 'src/modules/foo-ext/index.jsx'), 'utf8')
+  assert.equal(updatedContent, 'export default function(){ return 2 }\n')
+  entry = data.installed.find((e) => e.id === 'foo-ext')
+  assert.equal(entry.outdated, false)
+  const libExt = data.libraries.find((l) => l.id === libId2).extensions.find((e) => e.path === 'foo-ext')
+  assert.equal(entry.treeHash, libExt.treeHash)
+
+  // 13. a library with zero installed extensions is left untouched by a check
+  //     (remote2 was added in step 8 and nothing was ever installed from it)
+  data = await loadExtensions()
+  const untouchedBefore = data.libraries.find((l) => l.url === remote2)
+  result = await checkForUpdates()
+  const untouchedAfter = result.data.libraries.find((l) => l.url === remote2)
+  assert.deepEqual(untouchedAfter, untouchedBefore, 'library with nothing installed from it is not re-scanned')
 
   console.log('ok — extensions-store integrity checks passed')
 } finally {
