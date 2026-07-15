@@ -4,7 +4,7 @@ import { ChevronDown } from 'pixelarticons/react'
 // Custom-styled replacement for <select>: looks like a toolbar button with a
 // chevron, opens a matching option list. Keeps native <select> out of the UI
 // so every dropdown shares the button skin instead of the OS's own widget.
-export default function Dropdown({ value, onChange, options, title, className = '' }) {
+export default function Dropdown({ value, onChange, options, title, className = '', matchSibling = false }) {
   const [open, setOpen] = useState(false)
   const [h, setH] = useState() // matched to a neighbor so the button lines up with whatever sits beside it
   const ref = useRef(null)
@@ -17,10 +17,13 @@ export default function Dropdown({ value, onChange, options, title, className = 
     return () => document.removeEventListener('mousedown', close)
   }, [open])
 
-  // Auto-match a neighbor's height. CSS stretch can't do it: the dropdown's own
-  // intrinsic height would define the row, so it ends up taller than the fixed-
-  // height buttons beside it. Measure a sibling instead — works wherever it's placed.
+  // Auto-match a neighbor's height — opt in via matchSibling for toolbar/add-row
+  // placements where the dropdown sits beside a fixed-height button and CSS
+  // stretch can't do it (the dropdown's own intrinsic height would define the
+  // row instead). Off by default: matching an arbitrary sibling (e.g. a label
+  // above it in a form) collapses the button to that sibling's height instead.
   useEffect(() => {
+    if (!matchSibling) return
     const el = ref.current
     const sib = el?.nextElementSibling || el?.previousElementSibling
     if (!sib) return
@@ -29,7 +32,7 @@ export default function Dropdown({ value, onChange, options, title, className = 
     const ro = new ResizeObserver(measure)
     ro.observe(sib)
     return () => ro.disconnect()
-  }, [])
+  }, [matchSibling])
 
   return (
     <div className={'dropdown ' + className} ref={ref} title={title}>

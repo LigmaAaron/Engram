@@ -239,20 +239,20 @@ function Chat() {
             onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); else if (e.key === 'Escape') setRenaming(false) }} />
         ) : (
           <Dropdown value={chat.id} onChange={(v) => actions.setActiveChat(Number(v))} title="Chat session"
-            options={chats.map((c) => ({ value: c.id, label: c.title }))} />
+            options={chats.map((c) => ({ value: c.id, label: c.title }))} matchSibling />
         )}
         <button className="tb-btn" onClick={startRename} title="Rename chat"><Pencil size={14} /></button>
         <button className="tb-btn" onClick={() => actions.newChat()} title="New chat"><Plus size={14} /></button>
         <button className="tb-btn" onClick={() => actions.deleteChat(chat.id)} title="Delete chat"><Trash size={14} /></button>
         <span className="tb-gap" />
         <Dropdown value={settings.model} onChange={(v) => actions.setSettings({ model: v })} title="Model"
-          options={[settings.model, ...models.filter((m) => m !== settings.model)].map((m) => ({ value: m, label: m }))} />
+          options={[settings.model, ...models.filter((m) => m !== settings.model)].map((m) => ({ value: m, label: m }))} matchSibling />
         <button className={'tb-btn' + (settings.think ? ' on' : '')} onClick={() => actions.setSettings({ think: !settings.think })} title={settings.think ? 'Thinking on' : 'Thinking off'}>
           {settings.think ? <Lightbulb size={14} /> : <LightbulbOff size={14} />}
         </button>
         {settings.think && (
           <Dropdown value={settings.effort} onChange={(v) => actions.setSettings({ effort: v })} title="Thinking effort"
-            options={EFFORTS.map((e) => ({ value: e, label: e }))} />
+            options={EFFORTS.map((e) => ({ value: e, label: e }))} matchSibling />
         )}
       </div>
       <div className={'chat-cols' + (art ? ' split' : '')}>

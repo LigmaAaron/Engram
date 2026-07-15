@@ -3,6 +3,7 @@ import { Settings2, User, Brush, CloudSun, Moon, Undo, Checkbox, CheckboxOn } fr
 import { useStore, useWidgets, actions, registerWidget } from '../../core'
 import { THEME_VARS, DEFAULT_THEME } from '../../theme'
 import Dropdown from '../../Dropdown'
+import ColorPicker from '../../ColorPicker'
 
 const USE_CASES = [
   { value: 'student', label: 'Student' },
@@ -47,14 +48,6 @@ function General() {
   )
 }
 
-function Swatch({ value, onChange }) {
-  return (
-    <label className="set-swatch" style={{ background: value }}>
-      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
-    </label>
-  )
-}
-
 function Appearance() {
   const { settings } = useStore()
   const theme = settings.theme
@@ -74,7 +67,7 @@ function Appearance() {
       </div>
       <div className="set-field">
         <span>Accent color</span>
-        <Swatch value={theme.accent} onChange={(v) => actions.setTheme({ accent: v })} />
+        <ColorPicker value={theme.accent} onChange={(v) => actions.setTheme({ accent: v })} title="Accent color" />
       </div>
       <button className="set-adv-toggle" onClick={() => setAdvOpen((o) => !o)}>
         {advOpen ? 'Hide advanced' : 'Show advanced'}
@@ -85,8 +78,8 @@ function Appearance() {
             <div className="set-field" key={name}>
               <span>{VAR_LABELS[name]}</span>
               <div className="set-swatch-row">
-                <Swatch value={theme.overrides[name] || getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim()}
-                  onChange={(v) => actions.setThemeOverride(name, v)} />
+                <ColorPicker value={theme.overrides[name] || getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim()}
+                  onChange={(v) => actions.setThemeOverride(name, v)} title={VAR_LABELS[name]} />
                 {theme.overrides[name] && (
                   <button className="icon-btn" title={`Reset ${VAR_LABELS[name]}`} onClick={() => actions.clearThemeOverride(name)}><Undo size={13} /></button>
                 )}

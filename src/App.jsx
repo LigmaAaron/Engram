@@ -53,15 +53,16 @@ function NavItem({ m, active }) {
 
 function Sidebar({ view, widgets, moduleVisibility, onShutdown }) {
   const overview = { id: 'overview', title: 'Overview', icon: Grid3x3, nav: { Panel: OverviewStats } }
-  const nav = [overview, ...widgets.filter((w) => w.Page && moduleVisibility[w.id]?.page !== false)]
+  const settings = widgets.find((w) => w.id === 'settings')
+  const nav = [overview, ...widgets.filter((w) => w.id !== 'settings' && w.Page && moduleVisibility[w.id]?.page !== false)]
   return (
     <nav id="sidebar">
       <div className="brand"><div className="logo"><Cpu size={16} /></div><div className="name">Engram</div></div>
-      <div className="nav">
+      <div className="nav nav-scroll">
         {nav.map((m) => <NavItem key={m.id} m={m} active={view === m.id} />)}
       </div>
-      <div className="nav-spacer" />
-      <div className="nav">
+      <div className="nav nav-pinned">
+        {settings && <NavItem m={settings} active={view === settings.id} />}
         <button className="nav-item" onClick={onShutdown}>
           <Power size={18} /><span className="nav-label-txt">Shut Down</span>
         </button>

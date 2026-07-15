@@ -31,7 +31,7 @@ function Launcher() {
           onKeyDown={(e) => e.key === 'Enter' && add()} placeholder="Link name…" />
         <input value={url} onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()} placeholder="https://…" />
-        <Dropdown value={icon} onChange={setIcon} title="Icon" options={ICON_OPTIONS} />
+        <Dropdown value={icon} onChange={setIcon} title="Icon" options={ICON_OPTIONS} matchSibling />
         <button onClick={add} aria-label="Add link"><Plus size={15} /></button>
       </div>
       {links.length === 0
