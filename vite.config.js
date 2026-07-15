@@ -5,6 +5,7 @@ import { dirname } from 'node:path'
 import { makeStore } from './scripts/state-store.mjs'
 import { runAgent, searchWeb } from './scripts/agent.mjs'
 import { loadExtensions, addLibrary, removeLibrary, installExtension, uninstallExtension, checkForUpdates, updateExtension } from './scripts/extensions-store.mjs'
+import { startEnforcing, stopEnforcing } from './scripts/focus.mjs'
 
 // File-backed persistence for the dashboard. Browsers can't write to disk, so
 // the app GETs/POSTs its whole state here and the dev server keeps it in
@@ -201,8 +202,39 @@ function extensionsPlugin() {
   }
 }
 
+// Pomodoro app-blocking: the extension (installed at src/modules/focus)
+// can't shell out itself, so it POSTs here to start/stop enforcement.
+// See scripts/focus.mjs for the actual osascript polling logic.
+function focusPlugin() {
+  return {
+    name: 'aaronos-focus',
+    configureServer(server) {
+      server.middlewares.use('/__focus', async (req, res) => {
+        const seg = new URL(req.url, 'http://localhost').pathname.split('/').filter(Boolean)[0]
+        if (req.method === 'POST' && seg === 'start') {
+          let body = ''
+          req.on('data', (c) => { body += c })
+          req.on('end', () => {
+            let apps = []
+            try { ({ apps } = JSON.parse(body || '{}')) } catch { /* fall through with apps: [] */ }
+            startEnforcing(Array.isArray(apps) ? apps : [])
+            res.writeHead(204).end()
+          })
+          return
+        }
+        if (req.method === 'POST' && seg === 'stop') {
+          stopEnforcing()
+          res.writeHead(204).end()
+          return
+        }
+        res.writeHead(404).end()
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), dataStore(), extensionsPlugin()],
+  plugins: [react(), dataStore(), extensionsPlugin(), focusPlugin()],
   build: { target: 'esnext' }, // main.jsx uses top-level await
 
   server: {
