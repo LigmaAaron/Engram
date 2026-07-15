@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Grid3x3, Settings2, Bell, Search, Cpu, Power, ChevronDown, Plus } from 'pixelarticons/react'
-import { useStore, useWidgets, actions, notify, on, isoDay, occursOn } from './core'
+import { Grid3x3, Bell, Search, Cpu, Power, ChevronDown, Plus } from 'pixelarticons/react'
+import { useStore, useWidgets, actions, on, isoDay, occursOn } from './core'
 import { CommandBar } from './modules/chat/index.jsx'
+import { resolveMode, resolvedVars, THEME_VARS } from './theme'
 
 const greetPart = () => { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening' }
 const todayStr = () => new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
@@ -50,9 +51,9 @@ function NavItem({ m, active }) {
   )
 }
 
-function Sidebar({ view, widgets, onShutdown }) {
+function Sidebar({ view, widgets, moduleVisibility, onShutdown }) {
   const overview = { id: 'overview', title: 'Overview', icon: Grid3x3, nav: { Panel: OverviewStats } }
-  const nav = [overview, ...widgets.filter((w) => w.Page)]
+  const nav = [overview, ...widgets.filter((w) => w.Page && moduleVisibility[w.id]?.page !== false)]
   return (
     <nav id="sidebar">
       <div className="brand"><div className="logo"><Cpu size={16} /></div><div className="name">Engram</div></div>
@@ -61,9 +62,6 @@ function Sidebar({ view, widgets, onShutdown }) {
       </div>
       <div className="nav-spacer" />
       <div className="nav">
-        <button className="nav-item" onClick={() => notify('Settings', 'Nothing to configure yet — wire it via window.Engram.')}>
-          <Settings2 size={18} /><span className="nav-label-txt">Settings</span>
-        </button>
         <button className="nav-item" onClick={onShutdown}>
           <Power size={18} /><span className="nav-label-txt">Shut Down</span>
         </button>
@@ -167,14 +165,34 @@ export default function App() {
     if (!settings.userName) setAskName(true)
   }, [])
 
+  useEffect(() => {
+    const apply = () => {
+      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches
+      document.documentElement.dataset.theme = resolveMode(settings.theme.mode, prefersLight)
+      const vars = resolvedVars(settings.theme)
+      THEME_VARS.forEach((name) => {
+        const cssVar = `--${name}`
+        if (vars[name]) document.documentElement.style.setProperty(cssVar, vars[name])
+        else document.documentElement.style.removeProperty(cssVar)
+      })
+    }
+    apply()
+    if (settings.theme.mode !== 'system') return
+    const mq = window.matchMedia('(prefers-color-scheme: light)')
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [settings.theme])
+
   const solo = ui.view !== 'overview'
-  const shown = solo ? widgets.filter((w) => w.id === ui.view && w.Page) : widgets.filter((w) => w.Widget)
+  const shown = solo
+    ? widgets.filter((w) => w.id === ui.view && w.Page && ui.moduleVisibility[w.id]?.page !== false)
+    : widgets.filter((w) => w.Widget && ui.moduleVisibility[w.id]?.widget !== false)
 
   if (shutDown) return <ShutdownScreen />
 
   return (
     <>
-      <Sidebar view={ui.view} widgets={widgets} onShutdown={() => setConfirmShutdown(true)} />
+      <Sidebar view={ui.view} widgets={widgets} moduleVisibility={ui.moduleVisibility} onShutdown={() => setConfirmShutdown(true)} />
       <main id="main">
         <div className="topbar">
           <div className="greeting">
