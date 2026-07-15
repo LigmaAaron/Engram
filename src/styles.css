@@ -216,11 +216,16 @@ button,input{font-family:inherit;}
    just one extension's files into src/modules, nothing else from the repo. */
 .ext-lib{border:1px solid var(--border-soft);margin-bottom:10px;}
 .ext-lib-h{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface-2);border-bottom:1px solid var(--border-soft);}
-.ext-lib-url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--text-dim);}
+.ext-lib-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.ext-lib-name{font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ext-lib-desc{font-size:11.5px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ext-lib-creator{font-size:11px;color:var(--text-faint);}
 .ext-lib-h .icon-btn{width:26px;height:26px;flex:0 0 auto;}
 .ext-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border-soft);}
 .ext-row:last-child{border-bottom:none;}
-.ext-row-title{flex:1;font-size:13px;}
+.ext-row-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.ext-row-title{font-size:13px;}
+.ext-row-desc{font-size:11.5px;color:var(--text-dim);}
 .ext-row button{border:1px solid var(--border);background:none;color:var(--text-dim);font:inherit;cursor:pointer;font-size:11.5px;padding:4px 9px;transition:border-color .15s ease,color .15s ease;}
 .ext-row button:hover{color:var(--text);border-color:var(--text-faint);}
 .ext-row button:disabled,.ext-lib-h button:disabled{opacity:.5;cursor:default;}

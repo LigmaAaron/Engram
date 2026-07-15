@@ -68,8 +68,12 @@ function Extensions() {
         : data.libraries.map((lib) => (
             <div className="ext-lib" key={lib.id}>
               <div className="ext-lib-h">
-                <span className="ext-lib-url">{lib.url}</span>
-                <button className="icon-btn" aria-label={`Remove ${lib.url}`} disabled={busy}
+                <div className="ext-lib-info">
+                  <span className="ext-lib-name">{lib.name || lib.url}</span>
+                  {lib.description && <span className="ext-lib-desc">{lib.description}</span>}
+                  {lib.creator && <span className="ext-lib-creator">by {lib.creator}</span>}
+                </div>
+                <button className="icon-btn" aria-label={`Remove ${lib.name || lib.url}`} disabled={busy}
                   onClick={() => removeLibrary(lib.id)}><Close size={13} /></button>
               </div>
               {lib.extensions.length === 0
@@ -78,7 +82,10 @@ function Extensions() {
                     const installedEntry = data.installed.find((e) => e.library === lib.id && e.path === ext.path)
                     return (
                       <div className="ext-row" key={ext.path}>
-                        <span className="ext-row-title">{ext.title}</span>
+                        <div className="ext-row-info">
+                          <span className="ext-row-title">{ext.title}</span>
+                          {ext.description && <span className="ext-row-desc">{ext.description}</span>}
+                        </div>
                         <button disabled={busy}
                           onClick={() => (installedEntry ? uninstall(installedEntry.id) : install(lib.id, ext))}>
                           {installedEntry ? 'Uninstall' : 'Install'}
