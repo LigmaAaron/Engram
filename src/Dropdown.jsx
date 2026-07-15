@@ -44,7 +44,7 @@ export default function Dropdown({ value, onChange, options, title, className = 
         <div className="dropdown-menu">
           {options.map((o) => (
             <button key={o.value} type="button" className={'dropdown-item' + (o.value === value ? ' on' : '')}
-              onClick={() => { onChange(o.value); setOpen(false) }}>
+              onClick={() => { setOpen(false); onChange(o.value) }}>
               {o.label}
             </button>
           ))}
