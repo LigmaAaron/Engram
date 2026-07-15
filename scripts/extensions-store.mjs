@@ -17,6 +17,7 @@ const CACHE_DIR = 'data/extensions-cache'
 const MODULES_DIR = 'src/modules'
 
 const safeId = (s) => String(s).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/^-+|-+$/g, '')
+const str = (v) => (typeof v === 'string' && v.trim()) || undefined
 
 function run(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
@@ -27,6 +28,31 @@ function run(cmd, args, opts = {}) {
     child.on('error', reject)
     child.on('close', (code) => (code === 0 ? resolve(stdout) : reject(new Error(stderr.trim() || `${cmd} exited ${code}`))))
   })
+}
+
+// Reads <path>/info.json (or the repo-root info.json when path is '') from
+// the cached clone via `git show` — no checkout needed, same technique as
+// archiveExtract. info.json is always optional: any failure (missing file,
+// git error, invalid JSON, not an object) resolves to null, never throws.
+async function readInfoJson(repoDir, path) {
+  const gitPath = path ? `${path}/info.json` : 'info.json'
+  try {
+    const parsed = JSON.parse(await run('git', ['show', `HEAD:${gitPath}`], { cwd: repoDir }))
+    return (parsed && typeof parsed === 'object') ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+// A library is cloned --depth 1, so there's exactly one commit — its author
+// is the closest thing to a "creator" available without fetching more
+// history. Never throws; a failed git log just means no creator field.
+async function readCreator(repoDir) {
+  try {
+    return str(await run('git', ['log', '-1', '--format=%an', 'HEAD'], { cwd: repoDir }))
+  } catch {
+    return undefined
+  }
 }
 
 // Pipes `git archive` straight into `tar -x` — materializes one path from a
@@ -85,11 +111,28 @@ export async function addLibrary(url) {
   await mkdir(CACHE_DIR, { recursive: true })
   await run('git', ['clone', '--no-checkout', '--depth', '1', '--filter=blob:none', u, dir])
   const tree = await run('git', ['ls-tree', '-r', '--name-only', 'HEAD'], { cwd: dir })
-  const extensions = tree.split('\n')
+  const paths = tree.split('\n')
     .filter((p) => p.endsWith('/index.jsx'))
     .map((p) => p.slice(0, -'/index.jsx'.length))
-    .map((p) => ({ path: p, id: safeId(basename(p)), title: basename(p) }))
-  data.libraries.push({ id: slug, url: u, extensions })
+  const extensions = []
+  for (const p of paths) {
+    const info = await readInfoJson(dir, p)
+    extensions.push({
+      path: p,
+      id: safeId(basename(p)),
+      title: str(info?.name) || basename(p),
+      description: str(info?.description),
+    })
+  }
+  const libInfo = await readInfoJson(dir, '')
+  data.libraries.push({
+    id: slug,
+    url: u,
+    name: str(libInfo?.name),
+    description: str(libInfo?.description),
+    creator: await readCreator(dir),
+    extensions,
+  })
   await save(data)
   return data
 }
