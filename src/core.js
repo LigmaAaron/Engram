@@ -2,6 +2,7 @@
    window.Engram is the scripting surface for later integration. */
 import { useSyncExternalStore } from 'react'
 import { registerWidget, getWidgets, onWidgets } from './registry'
+import { DEFAULT_THEME } from './theme'
 
 // local date as YYYY-MM-DD (not toISOString — that's UTC and shifts overnight)
 export const isoDay = (d = new Date()) =>
@@ -36,13 +37,13 @@ const defaults = {
   noteDraft: '',   // the overview quick-capture buffer; sealed into a dated note on next load
   schedule: [],    // { id, name, start: 'HH:MM', end: 'HH:MM', days: [0-6], except?: ['YYYY-MM-DD'] }
   reminders: [],   // { id, at: epoch ms, title, body }
-  settings: { userName: '', useCase: 'general', style: 'direct', model: 'qwen3.5:latest', think: true, effort: 'medium' },
+  settings: { userName: '', useCase: 'general', style: 'direct', model: 'qwen3.5:latest', think: true, effort: 'medium', theme: DEFAULT_THEME },
   generating: null, // chatId currently being generated (persisted so a reload can resume it)
   notifs: [],
   extensionsOutdated: [], // installed extension ids currently flagged outdated — see src/modules/extensions
   streak: { count: 0, last: null },
   lastBrief: null,
-  ui: { view: 'overview', search: '', navOpen: {} },
+  ui: { view: 'overview', search: '', navOpen: {}, moduleVisibility: {} },
 }
 
 /* ---- Store: single source of truth, persisted to data/state.json via the
@@ -64,6 +65,7 @@ export async function hydrate() {
   } catch { /* first run / server unreachable — fall back to defaults */ }
   // migrations from the pre-sessions / pre-dates schema
   state.settings = { ...defaults.settings, ...state.settings }
+  state.settings.theme = { ...defaults.settings.theme, ...state.settings.theme, overrides: { ...defaults.settings.theme.overrides, ...state.settings.theme?.overrides } }
   if (!state.chats.length) state.chats = [{ id: 1, title: 'chat 1', messages: state.chat || [], artifacts: [] }]
   if (!state.chats.find((c) => c.id === state.activeChat)) state.activeChat = state.chats[0].id
   delete state.chat
@@ -91,6 +93,7 @@ export async function hydrate() {
     const { overviewOpen, chatOpen, notesOpen, ...ui } = state.ui
     state.ui = { ...ui, navOpen: { overview: !!overviewOpen, chat: !!chatOpen, notes: !!notesOpen } }
   }
+  if (!state.ui.moduleVisibility) state.ui = { ...state.ui, moduleVisibility: {} }
   hydrated = true
   if (sealed) persist() // write the cleared draft back so it isn't re-sealed next load
   subs.forEach((f) => f())
@@ -197,6 +200,11 @@ export const actions = {
   setSearch: (search) => store.set((s) => ({ ui: { ...s.ui, search } })),
   toggleNavPanel: (id) => store.set((s) => ({ ui: { ...s.ui, navOpen: { ...s.ui.navOpen, [id]: !s.ui.navOpen[id] } } })),
   setSettings: (patch) => store.set((s) => ({ settings: { ...s.settings, ...patch } })),
+  setTheme: (patch) => store.set((s) => ({ settings: { ...s.settings, theme: { ...s.settings.theme, ...patch } } })),
+  setThemeOverride: (name, hex) => store.set((s) => ({ settings: { ...s.settings, theme: { ...s.settings.theme, overrides: { ...s.settings.theme.overrides, [name]: hex } } } })),
+  clearThemeOverride: (name) => store.set((s) => { const { [name]: _, ...overrides } = s.settings.theme.overrides; return { settings: { ...s.settings, theme: { ...s.settings.theme, overrides } } } }),
+  resetTheme: () => store.set((s) => ({ settings: { ...s.settings, theme: DEFAULT_THEME } })),
+  setModuleVisibility: (id, patch) => store.set((s) => ({ ui: { ...s.ui, moduleVisibility: { ...s.ui.moduleVisibility, [id]: { ...s.ui.moduleVisibility[id], ...patch } } } })),
   // chat sessions
   newChat: () => { const id = Date.now(); store.set((s) => ({ chats: [...s.chats, { id, title: 'new chat', messages: [], artifacts: [] }], activeChat: id })) },
   deleteChat: (id) => store.set((s) => {
