@@ -229,6 +229,14 @@ button,input{font-family:inherit;}
 .ext-row button{border:1px solid var(--border);background:none;color:var(--text-dim);font:inherit;cursor:pointer;font-size:11.5px;padding:4px 9px;transition:border-color .15s ease,color .15s ease;}
 .ext-row button:hover{color:var(--text);border-color:var(--text-faint);}
 .ext-row button:disabled,.ext-lib-h button:disabled{opacity:.5;cursor:default;}
+.ext-tabs{display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+.ext-tab{border:1px solid var(--border);background:none;color:var(--text-dim);font:inherit;font-size:12.5px;padding:6px 12px;cursor:pointer;transition:border-color .15s ease,color .15s ease;display:flex;align-items:center;gap:6px;}
+.ext-tab:hover{color:var(--text);border-color:var(--text-faint);}
+.ext-tab.active{color:var(--text);border-color:var(--text);}
+.ext-tab-badge{min-width:16px;padding:1px 5px;border:1px solid currentColor;font-size:10.5px;font-weight:700;text-align:center;opacity:.85;}
+.ext-check-btn{margin-left:auto;border:1px solid var(--border);background:none;color:var(--text-dim);font:inherit;font-size:12px;padding:6px 10px;cursor:pointer;transition:border-color .15s ease,color .15s ease;}
+.ext-check-btn:hover{color:var(--text);border-color:var(--text-faint);}
+.ext-check-btn:disabled{opacity:.5;cursor:default;}
 
 /* AI Chat — fills the full page height (chat is always its own page, never
    an overview widget), so the log/artifact pane grow with the viewport

@@ -39,6 +39,7 @@ const defaults = {
   settings: { userName: '', useCase: 'general', style: 'direct', model: 'qwen3.5:latest', think: true, effort: 'medium' },
   generating: null, // chatId currently being generated (persisted so a reload can resume it)
   notifs: [],
+  extensionsOutdated: [], // installed extension ids currently flagged outdated — see src/modules/extensions
   streak: { count: 0, last: null },
   lastBrief: null,
   ui: { view: 'overview', search: '', navOpen: {} },
