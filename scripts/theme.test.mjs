@@ -11,7 +11,7 @@ assert.equal(resolveMode('light', false), 'light')
 assert.equal(resolveMode('system', true), 'light')
 assert.equal(resolveMode('system', false), 'dark')
 
-assert.deepEqual(resolvedVars(DEFAULT_THEME), { accent: '#e8e8e6' }, 'no overrides -> only accent is written')
+assert.deepEqual(resolvedVars(DEFAULT_THEME), {}, 'unmodified default -> nothing written, mode-aware CSS accent applies')
 assert.deepEqual(
   resolvedVars({ mode: 'dark', accent: '#ff0000', overrides: { bg: '#111111' } }),
   { accent: '#ff0000', bg: '#111111' },

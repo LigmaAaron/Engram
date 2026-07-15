@@ -20,11 +20,14 @@ export const resolveMode = (mode, prefersLight) => {
   return prefersLight ? 'light' : 'dark'
 }
 
-// Final { varName: hex } map to apply as inline styles on <html>. Only
-// 'accent' and anything in `overrides` are ever present — the rest of the
-// palette comes from styles.css's :root / [data-theme="light"] blocks so
-// clearing an override falls straight back to the stylesheet's value.
+// Final { varName: hex } map to apply as inline styles on <html>. 'accent'
+// is only included once the user actually changes it away from
+// DEFAULT_THEME.accent — otherwise every mode would inherit dark mode's
+// accent inline, shadowing [data-theme="light"]'s own --accent in
+// styles.css. Whatever's in `overrides` always wins, so clearing an
+// override falls straight back to the stylesheet's (mode-aware) value.
 export const resolvedVars = (theme) => {
   const t = { ...DEFAULT_THEME, ...theme }
-  return { accent: t.accent, ...t.overrides }
+  const vars = t.accent !== DEFAULT_THEME.accent ? { accent: t.accent } : {}
+  return { ...vars, ...t.overrides }
 }

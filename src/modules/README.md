@@ -24,9 +24,18 @@ registerWidget({
     onAdd: () => {},       // "+" button next to the nav item
     Panel: Hello,          // expandable sub-panel under the nav item
   },
+  settings: HelloSettings, // optional — rendered in this module's category
+                           // on the Settings page, below the visibility
+                           // toggles. Omit if the module has no configurable
+                           // behavior.
 })
 ```
 
 Modules read/write app state via `useStore`/`actions` from `../../core`.
 Big modules can split into more files (`Page.jsx`, `Widget.jsx`, …) imported
 by `index.jsx` — only `index.jsx` is auto-loaded.
+
+Every module (built-in or installed extension) automatically gets a category
+on the Settings page with "Show on Overview"/"Show in Sidebar" toggles
+(whichever of `Widget`/`Page` it defines); `settings` is only needed for
+extra, module-specific options.

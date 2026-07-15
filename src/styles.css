@@ -484,3 +484,26 @@ button,input{font-family:inherit;}
 .shutdown-screen{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;}
 .shutdown-screen p{margin:0;font-size:13px;}
 .shutdown-screen .dim{color:var(--text-dim);font-size:12.5px;}
+
+/* Settings page — set-* namespace, Page-only module (no overview widget) */
+.set-shell{display:flex;gap:0;height:100%;margin:-14px;}
+.set-cats{width:180px;flex:0 0 auto;padding:10px;border-right:1px solid var(--border-soft);display:flex;flex-direction:column;gap:2px;overflow:auto;}
+.set-body{flex:1;padding:18px;overflow:auto;}
+.set-panel{display:flex;flex-direction:column;gap:16px;max-width:420px;}
+.set-field{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--text-dim);}
+.set-field .dropdown-btn{width:100%;justify-content:space-between;}
+.set-mode-row{display:flex;gap:6px;}
+.set-mode-btn{width:auto;padding:0 10px;gap:6px;}
+.set-mode-btn span{font-size:12px;}
+.set-swatch{width:32px;height:32px;border:1px solid var(--border);cursor:pointer;display:block;position:relative;overflow:hidden;}
+.set-swatch input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.set-swatch-row{display:flex;align-items:center;gap:8px;}
+.set-adv-toggle{align-self:flex-start;border:1px solid var(--border);background:none;color:var(--text-dim);font:inherit;font-size:12px;padding:6px 10px;cursor:pointer;}
+.set-adv-toggle:hover{color:var(--text);border-color:var(--text-faint);}
+.set-adv{display:flex;flex-direction:column;gap:14px;padding-top:4px;border-top:1px solid var(--border-soft);}
+.set-reset-all{align-self:flex-start;border:1px solid var(--border);background:none;color:var(--text-dim);font:inherit;font-size:12px;padding:6px 10px;cursor:pointer;}
+.set-reset-all:hover{color:var(--err);border-color:var(--err);}
+.set-vis-btn{width:auto;padding:0 10px;gap:6px;}
+.set-vis-btn span{font-size:12px;}
+.set-custom{padding-top:8px;border-top:1px solid var(--border-soft);}
+@media (max-width:760px){.set-cats{width:52px;}.set-cats .nav-label-txt{display:none;}}
